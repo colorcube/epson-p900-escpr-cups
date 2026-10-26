@@ -205,5 +205,49 @@
 *Unidirectional True/Unidirectional (Highest Precision): ""
 *CloseUI: *Unidirectional
 
+*OpenUI *EpsonPrintDuty/Color Density (Print Duty Override): PickOne
+*OrderDependency: 60 AnySetup *EpsonPrintDuty
+*DefaultEpsonPrintDuty: Auto
+*EpsonPrintDuty Auto/Media Default (0% or Custom Slot Setting): ""
+*EpsonPrintDuty -30/-30%: ""
+*EpsonPrintDuty -20/-20%: ""
+*EpsonPrintDuty -15/-15%: ""
+*EpsonPrintDuty -10/-10%: ""
+*EpsonPrintDuty -5/-5%: ""
+*EpsonPrintDuty 0/0% (Standard): ""
+*EpsonPrintDuty 5/+5%: ""
+*EpsonPrintDuty 10/+10%: ""
+*EpsonPrintDuty 15/+15%: ""
+*EpsonPrintDuty 20/+20%: ""
+*EpsonPrintDuty 30/+30%: ""
+*CloseUI: *EpsonPrintDuty
+
+*OpenUI *EpsonDryingTime/Ink Drying Time per Pass: PickOne
+*OrderDependency: 65 AnySetup *EpsonDryingTime
+*DefaultEpsonDryingTime: Auto
+*EpsonDryingTime Auto/Media Default: ""
+*EpsonDryingTime 0/0 (Standard): ""
+*EpsonDryingTime 1/1: ""
+*EpsonDryingTime 2/2: ""
+*EpsonDryingTime 3/3: ""
+*EpsonDryingTime 5/5: ""
+*EpsonDryingTime 10/10 (Max): ""
+*CloseUI: *EpsonDryingTime
+
+*OpenUI *EpsonBottomEdgePriority/Bottom Edge Print Quality Priority: PickOne
+*OrderDependency: 70 AnySetup *EpsonBottomEdgePriority
+*DefaultEpsonBottomEdgePriority: Auto
+*EpsonBottomEdgePriority Auto/Media Default: ""
+*EpsonBottomEdgePriority False/Off (Standard Speed): ""
+*EpsonBottomEdgePriority True/On (Higher Bottom-Edge Precision): ""
+*CloseUI: *EpsonBottomEdgePriority
+
+*OpenUI *EpsonIgnorePanelMismatch/Paper Setting Mismatch Check: Boolean
+*OrderDependency: 75 AnySetup *EpsonIgnorePanelMismatch
+*DefaultEpsonIgnorePanelMismatch: True
+*EpsonIgnorePanelMismatch True/Ignore Panel Mismatch (Print Immediately): ""
+*EpsonIgnorePanelMismatch False/Verify Against Printer Panel Setting: ""
+*CloseUI: *EpsonIgnorePanelMismatch
+
 *DefaultFont: Courier
 *Font Courier: Standard "(001.001)" Standard ROM

@@ -36,11 +36,15 @@ fi
 
 echo "=== 4. Installing filter, modules, PPDs, and ICC profiles ==="
 install -d /usr/share/epson-p900-escpr-cups/src
-install -m 644 "$SCRIPT_DIR/src/escpr_protocol.py" /usr/share/epson-p900-escpr-cups/src/
-install -m 644 "$SCRIPT_DIR/src/icc_manager.py"    /usr/share/epson-p900-escpr-cups/src/
-install -m 644 "$SCRIPT_DIR/src/rhv2.c"            /usr/share/epson-p900-escpr-cups/src/
+install -m 644 "$SCRIPT_DIR/src/escpr_protocol.py"  /usr/share/epson-p900-escpr-cups/src/
+install -m 644 "$SCRIPT_DIR/src/icc_manager.py"     /usr/share/epson-p900-escpr-cups/src/
+install -m 644 "$SCRIPT_DIR/src/media_installer.py" /usr/share/epson-p900-escpr-cups/src/
+install -m 644 "$SCRIPT_DIR/src/rhv2.c"             /usr/share/epson-p900-escpr-cups/src/
 if [[ -f "$SCRIPT_DIR/src/librhv2.so" ]]; then
-    install -m 755 "$SCRIPT_DIR/src/librhv2.so"    /usr/share/epson-p900-escpr-cups/src/
+    install -m 755 "$SCRIPT_DIR/src/librhv2.so"     /usr/share/epson-p900-escpr-cups/src/
+fi
+if [[ -f "$SCRIPT_DIR/custom_media.json" ]]; then
+    install -m 644 "$SCRIPT_DIR/custom_media.json"  /usr/share/epson-p900-escpr-cups/custom_media.json
 fi
 
 install -d /usr/lib/cups/filter

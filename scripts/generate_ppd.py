@@ -51,10 +51,31 @@ def build_ppd(model_name: str, is_p900: bool) -> str:
         "",
     ]
 
+    def _ppd_safe_text(text: str) -> str:
+        return (
+            text.replace("/", "-")
+            .replace(":", "-")
+            .replace("ä", "ae")
+            .replace("ö", "oe")
+            .replace("ü", "ue")
+            .replace("Ä", "Ae")
+            .replace("Ö", "Oe")
+            .replace("Ü", "Ue")
+            .replace("ß", "ss")
+            .encode("ascii", errors="ignore")
+            .decode("ascii")[:39]
+        )
+
     for m in MEDIA_SPECS:
-        safe_name = m.name.replace("/", "-")
+        safe_name = _ppd_safe_text(m.name)
+        ppd_key = m.key[:32]
+        icc_val = (
+            m.icc_profile
+            if m.icc_profile.startswith("/")
+            else f"/usr/share/color/icc/epson-scp900/{m.icc_profile}"
+        )
         lines.append(
-            f'*cupsICCProfile RGB.{m.key}./{safe_name}: "/usr/share/color/icc/epson-scp900/{m.icc_profile}"'
+            f'*cupsICCProfile RGB.{ppd_key}./{safe_name}: "{icc_val}"'
         )
     lines.extend([
         "",
@@ -118,8 +139,9 @@ def build_ppd(model_name: str, is_p900: bool) -> str:
         "*DefaultMediaType: PlainPaper",
     ])
     for m in MEDIA_SPECS:
-        safe_name = m.name.replace("/", "-")
-        lines.append(f'*MediaType {m.key}/{safe_name}: "<</MediaType({m.key})>>setpagedevice"')
+        safe_name = _ppd_safe_text(m.name)
+        ppd_key = m.key[:32]
+        lines.append(f'*MediaType {ppd_key}/{safe_name}: "<</MediaType({ppd_key})>>setpagedevice"')
     lines.append("*CloseUI: *MediaType")
     lines.append("")
 
@@ -201,6 +223,50 @@ def build_ppd(model_name: str, is_p900: bool) -> str:
         '*Unidirectional False/Bidirectional (Faster): ""',
         '*Unidirectional True/Unidirectional (Highest Precision): ""',
         "*CloseUI: *Unidirectional",
+        "",
+        "*OpenUI *EpsonPrintDuty/Color Density (Print Duty Override): PickOne",
+        "*OrderDependency: 60 AnySetup *EpsonPrintDuty",
+        "*DefaultEpsonPrintDuty: Auto",
+        '*EpsonPrintDuty Auto/Media Default (0% or Custom Slot Setting): ""',
+        '*EpsonPrintDuty -30/-30%: ""',
+        '*EpsonPrintDuty -20/-20%: ""',
+        '*EpsonPrintDuty -15/-15%: ""',
+        '*EpsonPrintDuty -10/-10%: ""',
+        '*EpsonPrintDuty -5/-5%: ""',
+        '*EpsonPrintDuty 0/0% (Standard): ""',
+        '*EpsonPrintDuty 5/+5%: ""',
+        '*EpsonPrintDuty 10/+10%: ""',
+        '*EpsonPrintDuty 15/+15%: ""',
+        '*EpsonPrintDuty 20/+20%: ""',
+        '*EpsonPrintDuty 30/+30%: ""',
+        "*CloseUI: *EpsonPrintDuty",
+        "",
+        "*OpenUI *EpsonDryingTime/Ink Drying Time per Pass: PickOne",
+        "*OrderDependency: 65 AnySetup *EpsonDryingTime",
+        "*DefaultEpsonDryingTime: Auto",
+        '*EpsonDryingTime Auto/Media Default: ""',
+        '*EpsonDryingTime 0/0 (Standard): ""',
+        '*EpsonDryingTime 1/1: ""',
+        '*EpsonDryingTime 2/2: ""',
+        '*EpsonDryingTime 3/3: ""',
+        '*EpsonDryingTime 5/5: ""',
+        '*EpsonDryingTime 10/10 (Max): ""',
+        "*CloseUI: *EpsonDryingTime",
+        "",
+        "*OpenUI *EpsonBottomEdgePriority/Bottom Edge Print Quality Priority: PickOne",
+        "*OrderDependency: 70 AnySetup *EpsonBottomEdgePriority",
+        "*DefaultEpsonBottomEdgePriority: Auto",
+        '*EpsonBottomEdgePriority Auto/Media Default: ""',
+        '*EpsonBottomEdgePriority False/Off (Standard Speed): ""',
+        '*EpsonBottomEdgePriority True/On (Higher Bottom-Edge Precision): ""',
+        "*CloseUI: *EpsonBottomEdgePriority",
+        "",
+        "*OpenUI *EpsonIgnorePanelMismatch/Paper Setting Mismatch Check: Boolean",
+        "*OrderDependency: 75 AnySetup *EpsonIgnorePanelMismatch",
+        "*DefaultEpsonIgnorePanelMismatch: True",
+        '*EpsonIgnorePanelMismatch True/Ignore Panel Mismatch (Print Immediately): ""',
+        '*EpsonIgnorePanelMismatch False/Verify Against Printer Panel Setting: ""',
+        "*CloseUI: *EpsonIgnorePanelMismatch",
         "",
         "*DefaultFont: Courier",
         "*Font Courier: Standard \"(001.001)\" Standard ROM",

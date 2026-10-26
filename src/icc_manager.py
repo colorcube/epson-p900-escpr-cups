@@ -30,6 +30,8 @@ def _default_icc_search_dirs() -> List[pathlib.Path]:
         dirs.append(pathlib.Path(env_dir))
     dirs.extend([
         pkg_icc,
+        pathlib.Path.home() / ".local" / "share" / "color" / "icc" / "epson-scp900",
+        pathlib.Path.home() / ".local" / "share" / "color" / "icc",
         pathlib.Path("/usr/share/color/icc/epson-scp900"),
         pathlib.Path("/usr/local/share/color/icc/epson-scp900"),
         pathlib.Path("/usr/share/color/icc"),
@@ -39,13 +41,17 @@ def _default_icc_search_dirs() -> List[pathlib.Path]:
 
 def find_icc_profile(media_option: str, search_dirs: Optional[List[pathlib.Path]] = None) -> Optional[pathlib.Path]:
     """
-    Find the Epson ICC profile path on disk for the requested media type.
-    Checks both macOS descriptive names and Windows EE2NE_XX.ICC names.
+    Find the Epson or custom ICC profile path on disk for the requested media type.
+    Checks direct paths, macOS descriptive names, and Windows EE2NE_XX.ICC names.
     """
     media: MediaSpec = get_media_spec(media_option)
+    if media.icc_profile:
+        direct = pathlib.Path(media.icc_profile)
+        if direct.is_file():
+            return direct
     dirs = search_dirs or _default_icc_search_dirs()
     candidates = [
-        media.icc_profile,
+        pathlib.Path(media.icc_profile).name if media.icc_profile else "",
         media.win_icc,
         media.win_icc.lower(),
     ]
@@ -53,6 +59,8 @@ def find_icc_profile(media_option: str, search_dirs: Optional[List[pathlib.Path]
         if not d.is_dir():
             continue
         for name in candidates:
+            if not name:
+                continue
             p = d / name
             if p.is_file():
                 return p

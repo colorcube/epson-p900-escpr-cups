@@ -46,11 +46,16 @@ class MediaSpec:
     is_matte: bool          # Uses Matte Black (MK) vs Photo Black (PK)
     default_overcoat: int   # 2 = Black Enhance Overcoat ON, 1 = OFF
     supports_carbon_black: bool
-    user_media_id: int = 0          # >0 (e.g. 1901..1930 or NVRAM slot ID) emits ESC q setl
+    user_media_id: int = 0          # >0 (32-bit MA_ID in NVRAM slot Tag 0x24, or 1901..1930) emits ESC q setl
     print_duty: int = 0             # -50..+50 ink duty in ESC p setq byte 5
     drying_time: int = 0            # 0..10 pass drying time in REMOTE1 DR
     bottom_edge_priority: bool = False
     rubbing_reduction: int = 0
+    slot: int = 0                   # Printer NVRAM slot 1..30 (0 = built-in or unslotted)
+    platen_gap: int = 0             # Tag 0x22 in NVRAM slot (0=1.6, 1=2.1, 2=2.4, 3=0.95, 4=1.35)
+    thickness_01mm: int = 0         # Tag 0x19 in NVRAM slot (units of 0.01 mm, e.g. 27 = 0.27 mm)
+    cut_sheet_feed_offset: int = 0  # Tag 0x26 in NVRAM slot (-300..+300)
+    roll_paper_feed_offset: int = 0 # Tag 0x25 in NVRAM slot (-300..+300)
 
 
 # Complete table of all 18 official Epson SC-P900 / SC-P700 media types
@@ -262,17 +267,25 @@ for _m in MEDIA_SPECS:
     MEDIA_BY_KEY[f"sn_{_m.sn_id}"] = _m
 
 
-def load_custom_media_specs() -> None:
+def load_custom_media_specs(extra_json_path: Optional[pathlib.Path] = None) -> None:
     """
     Load optional custom media entries (imported from .emx or read from the
     printer's 30 NVRAM slots 1..30) from custom_media.json.
     """
     here = pathlib.Path(__file__).resolve().parent
-    candidates = [
+    candidates: List[pathlib.Path] = []
+    if extra_json_path is not None:
+        candidates.append(pathlib.Path(extra_json_path))
+    env_json = os.environ.get("EPSON_P900_CUSTOM_MEDIA_JSON")
+    if env_json:
+        candidates.append(pathlib.Path(env_json))
+    candidates.extend([
         here.parent / "custom_media.json",
+        pathlib.Path("/etc/epson-p900-escpr-cups/custom_media.json"),
         pathlib.Path("/usr/share/epson-p900-escpr-cups/custom_media.json"),
+        pathlib.Path.home() / ".config" / "epson-p900-escpr" / "custom_media.json",
         pathlib.Path.home() / ".config" / "epson-p900" / "custom_media.json",
-    ]
+    ])
     seen_keys = {m.key.lower() for m in MEDIA_SPECS}
     for path in candidates:
         if not path.is_file():
@@ -296,6 +309,9 @@ def load_custom_media_specs() -> None:
                 base_ref.lower(),
                 MEDIA_BY_KEY.get(f"sn_{base_ref}", MEDIA_BY_KEY["velvetfineart"]),
             )
+            thickness_01mm = int(item.get("thickness_01mm", 0) or 0)
+            if not thickness_01mm and item.get("thickness_mm") is not None:
+                thickness_01mm = int(round(float(item["thickness_mm"]) * 100.0))
             spec = MediaSpec(
                 key=key,
                 name=str(item.get("name") or key),
@@ -313,17 +329,46 @@ def load_custom_media_specs() -> None:
                 drying_time=int(item.get("drying_time", 0)),
                 bottom_edge_priority=bool(item.get("bottom_edge_priority", False)),
                 rubbing_reduction=int(item.get("rubbing_reduction", 0)),
+                slot=slot,
+                platen_gap=int(item.get("platen_gap", 0) or 0),
+                thickness_01mm=thickness_01mm,
+                cut_sheet_feed_offset=int(item.get("cut_sheet_feed_offset", 0) or 0),
+                roll_paper_feed_offset=int(item.get("roll_paper_feed_offset", 0) or 0),
             )
             MEDIA_SPECS.append(spec)
             MEDIA_BY_KEY[spec.key.lower()] = spec
-            if slot:
+            if 1 <= slot <= 30:
                 MEDIA_BY_KEY[f"slot_{slot}"] = spec
+                MEDIA_BY_KEY[f"customslot{slot:02d}"] = spec
+                MEDIA_BY_KEY[str(1900 + slot)] = spec
             if user_media_id:
                 MEDIA_BY_KEY[str(user_media_id)] = spec
             seen_keys.add(spec.key.lower())
 
 
 load_custom_media_specs()
+
+
+def resolve_user_media_id(raw_id: int, media: MediaSpec) -> int:
+    """
+    Resolve a requested custom media identifier to the 32-bit MA_ID (Tag 0x24
+    in the printer's NVRAM slot) required by 'ESC q setl'.
+    Accepts:
+      - 0: uses media.user_media_id
+      - 1..30: looks up NVRAM slot 1..30 in MEDIA_BY_KEY['slot_<N>'] if loaded
+      - 1901..1930: macOS/Windows driver UI slot IDs -> looks up NVRAM slot N-1900
+      - 32-bit MA_ID (e.g. 915907607): passed through directly
+    """
+    uid = int(raw_id) if int(raw_id) > 0 else int(media.user_media_id)
+    if 1 <= uid <= 30:
+        slot_spec = MEDIA_BY_KEY.get(f"slot_{uid}")
+        if slot_spec is not None and slot_spec.user_media_id > 0:
+            return slot_spec.user_media_id
+    elif 1901 <= uid <= 1930:
+        slot_spec = MEDIA_BY_KEY.get(f"slot_{uid - 1900}")
+        if slot_spec is not None and slot_spec.user_media_id > 0:
+            return slot_spec.user_media_id
+    return uid
 
 
 def get_media_spec(media_option: str) -> MediaSpec:
@@ -880,7 +925,7 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
         overcoat_val = media.default_overcoat
 
     # Effective custom media & mechanical parameters (explicit cfg override -> MediaSpec default)
-    eff_user_media_id = cfg.user_media_id if cfg.user_media_id > 0 else media.user_media_id
+    eff_user_media_id = resolve_user_media_id(cfg.user_media_id, media)
     raw_duty = cfg.print_duty if cfg.print_duty is not None else media.print_duty
     eff_print_duty = max(-50, min(50, int(raw_duty)))
     raw_drying = cfg.drying_time if cfg.drying_time is not None else media.drying_time

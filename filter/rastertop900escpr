@@ -370,9 +370,13 @@ def run_cups_filter_mode(argv: List[str]) -> int:
     def _opt_bool(keys: List[str]) -> Optional[bool]:
         for k in keys:
             if k in opts:
-                return opts[k].lower() in ("true", "1", "yes", "on")
+                val = opts[k].lower()
+                if val in ("auto", "default", ""):
+                    continue
+                return val in ("true", "1", "yes", "on")
         return None
 
+    ignore_mismatch_opt = _opt_bool(["IgnorePanelMismatch", "EpsonIgnorePanelMismatch"])
     cfg = EscprJobConfig(
         media=opts.get("MediaType", opts.get("media", "PlainPaper")),
         input_slot=opts.get("InputSlot", "Rear"),
@@ -390,6 +394,7 @@ def run_cups_filter_mode(argv: List[str]) -> int:
         drying_time=_opt_int(["DryingTime", "EpsonDryingTime"]),
         bottom_edge_priority=_opt_bool(["BottomEdgePriority", "EpsonBottomEdgePriority"]),
         rubbing_reduction=_opt_int(["RubbingReduction", "EpsonRubbingReduction"]),
+        ignore_panel_mismatch=True if ignore_mismatch_opt is None else ignore_mismatch_opt,
     )
     rendering_intent = opts.get("EpsonRenderingIntent", opts.get("RenderingIntent", "RelativeBPC"))
 
