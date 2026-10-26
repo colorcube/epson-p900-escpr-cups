@@ -127,6 +127,7 @@ Run `./target/release/rastertop900escpr --help` for all options.
 | [docs/supported-features.md](docs/supported-features.md) | Media, paper sources, sizes, quality levels – with test status |
 | [docs/custom-media.md](docs/custom-media.md) | Custom media & third-party papers (`.emx`, NVRAM slots `1..30`, `custom_media.json`, `ep-media-installer`, dynamic `lp -o` flags) |
 | [docs/why-not-ipp.md](docs/why-not-ipp.md) | Difference to driverless/IPP printing, side-by-side test |
+| [docs/why-not-gutenprint.md](docs/why-not-gutenprint.md) | Why `ESC/P-R Level 5` instead of a classic Gutenprint (`ESC i`) driver on the SC-P900 |
 | [docs/resolution.md](docs/resolution.md) | Image resolution vs. printer resolution, halftoning |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems (including the harmless CUPS `lpadmin` PPD warning) |
 | [docs/protocol.md](docs/protocol.md) | Byte-level protocol notes for contributors |
