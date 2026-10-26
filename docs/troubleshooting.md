@@ -42,3 +42,13 @@ the image actually lies inside the printable area.
 
 - Port 9100 must be reachable: `nc -vz <printer-ip> 9100`.
 - Another job may be waiting on the printer's control panel for confirmation.
+
+## `lpadmin: Printer drivers are deprecated and will stop working in a future version of CUPS`
+
+CUPS 2.3+ prints this warning whenever **any** printer queue is registered with
+a classic PPD file (`-P` / `-m`), including Gutenprint, HPLIP, TurboPrint, and
+vendor drivers. It refers to the long-term plan for a future CUPS 3.0 release to
+replace PPD-based filters with standalone IPP Everywhere Printer Applications
+(daemons). On all current Linux distributions using CUPS 2.4.x, PPD-based
+queues and filters work normally and the message can be safely ignored.
+

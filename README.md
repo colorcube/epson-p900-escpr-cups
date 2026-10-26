@@ -101,6 +101,7 @@ Run `./filter/rastertop900escpr --help` for all options.
 | Document | Content |
 |---|---|
 | [docs/supported-features.md](docs/supported-features.md) | Media, paper sources, sizes, quality levels – with test status |
+| [docs/custom-media.md](docs/custom-media.md) | Custom media & third-party papers (`.emx`, NVRAM slots `1..30`, `custom_media.json`, dynamic `lp -o` flags) |
 | [docs/why-not-ipp.md](docs/why-not-ipp.md) | Difference to driverless/IPP printing, side-by-side test |
 | [docs/resolution.md](docs/resolution.md) | Image resolution vs. printer resolution, halftoning |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Common problems |
