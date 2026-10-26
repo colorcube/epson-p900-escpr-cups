@@ -32,15 +32,17 @@ ESC ( R 08 00 00 "REMOTE1"       ── page / setup block
    US 03 00  00 00 01
    US 03 00  00 01 00
    US 03 00  00 02 01
-   DR 04 00  00 'B' 00 00
-   PP 03 00  00 m1 m2                 paper path, see below
+    DR 04 00  00 'B' 00 <drying_time>  drying time per pass (0..255)
+    PP 03 00  00 m1 m2                 paper path, see below
 ESC 00 00 00
 
 ESC ( R 06 00 00 "ESCPR"         enter ESC/P-R
 ESC q <len32> "setq" …           print quality      (9 bytes)
 ESC q <len32> "seti" …           image processing   (8 bytes)
 ESC m <len32> "setm" …           mechanical setting (7 bytes)
-ESC u <len32> "chku" 01 00
+ESC u <len32> "chku" 01 00       print setting check (2 bytes)
+ESC q <len32> "setl" …           custom media ID    (4 bytes, optional)
+ESC m <len32> "seti" …           extended mech      (4 bytes, optional)
 ESC j <len32> "setj" …           job / page geometry (22 bytes)
 ESC p <len32> "sttp"             start page
 ESC p <len32> "setq" …           page quality       (12 bytes)
@@ -77,7 +79,7 @@ Packet format: `ESC <class char> <uint32 LE payload length> <4 ASCII command> <p
 
 | Offset | Size | Field |
 |---:|---:|---|
-| 0 | 1 | MediaTypeID (firmware media ID, e.g. 0 plain, 52 Photo Paper Glossy) |
+| 0 | 1 | MediaTypeID (firmware base media ID, e.g. 0 plain, 25 Velvet Fine Art, 52 Photo Paper Glossy, 174 Baryta) |
 | 1 | 1 | PrintQuality (allowed values depend on media, see `resolve_firmware_print_quality`) |
 | 2 | 1 | ColorMode (0 color, 3 Advanced B&W) |
 | 3–5 | 3 | brightness / contrast / saturation *(assumed)*, always 0 |
@@ -96,6 +98,27 @@ GlossPriority`
 BkInkSaveMode, CrossDirectionMode (unidirectional)` – field names as found in
 Epson's driver. MediaSizeID 0 = A4, 99 = custom size.
 
+### `ESC u chku` – print setting check (2 bytes)
+
+`NonCheckPrintMode (1 = print without panel prompt, 0 = prompt on mismatch),
+CheckPaperSize (0)`.
+
+### `ESC q setl` – custom media slot ID (4 bytes, optional)
+
+`UserMediaTypeID u32 BE` (`1..30` or `1901..1930`). Sent immediately after
+`ESC u chku` when printing on a custom media slot registered in the printer's
+NVRAM via Epson Media Installer. Note that `ESC q setq` byte 0 still carries the
+**base media `sn_id`** (e.g. `25` for Velvet Fine Art or `174` for Baryta) so the
+firmware selects the right black ink (`PK`/`MK`) and halftoning LUT, while
+`ESC q setl` activates the slot's mechanical parameters (platen gap, paper
+thickness, tension, feed offset, skew check) stored in NVRAM.
+
+### `ESC m seti` – extended mechanical setting (4 bytes, optional)
+
+`SingleBkPerm u8 (0), RubbingReduction u16 BE, BottomEdgePriority u8 (0 or 1)`.
+Sent after `ESC q setl` (or `ESC u chku`) when `RubbingReduction != 0` or
+`BottomEdgePriority` is enabled.
+
 ### `ESC j setj` – geometry (22 bytes, 720 dpi units)
 
 `PaperWidth u32, PaperLength u32, TopMargin i16, LeftMargin i16,
@@ -104,8 +127,10 @@ PrintDirection u8`
 
 ### `ESC p setq` – page quality (12 bytes)
 
-`ColorMode, ColorPlane (3), LUT, Gamma u16 (220 = 2.2), PrintDuty, 6 × 0`.
+`ColorMode, ColorPlane (3), LUT, Gamma u16 (220 = 2.2), PrintDuty i8 (-50..+50), 6 × 0`.
 LUT 4 = no color adjustment (host ICC), 0 = Epson standard, 7 = Advanced B&W.
+`PrintDuty` (byte 5) is the signed 8-bit color density adjustment (`-50..+50%`,
+used by `.emx` custom media profiles or manual density overrides).
 
 ### `ESC t tsnd` – LCD preview thumbnail
 

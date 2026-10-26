@@ -26,6 +26,8 @@ from __future__ import annotations
 
 import ctypes
 import datetime
+import json
+import os
 import pathlib
 import subprocess
 import struct
@@ -38,12 +40,17 @@ class MediaSpec:
     key: str
     name: str
     ppd_id: int
-    sn_id: int              # Hardware MediaTypeID in ESC q setq byte 0
-    icc_profile: str        # Official macOS ICC filename
+    sn_id: int              # Hardware base MediaTypeID in ESC q setq byte 0
+    icc_profile: str        # Official or custom ICC filename
     win_icc: str            # Official Windows ICC filename (EE2NE_00..14.ICC)
     is_matte: bool          # Uses Matte Black (MK) vs Photo Black (PK)
     default_overcoat: int   # 2 = Black Enhance Overcoat ON, 1 = OFF
     supports_carbon_black: bool
+    user_media_id: int = 0          # >0 (e.g. 1901..1930 or NVRAM slot ID) emits ESC q setl
+    print_duty: int = 0             # -50..+50 ink duty in ESC p setq byte 5
+    drying_time: int = 0            # 0..10 pass drying time in REMOTE1 DR
+    bottom_edge_priority: bool = False
+    rubbing_reduction: int = 0
 
 
 # Complete table of all 18 official Epson SC-P900 / SC-P700 media types
@@ -253,6 +260,70 @@ for _m in MEDIA_SPECS:
     MEDIA_BY_KEY[_m.key.lower()] = _m
     MEDIA_BY_KEY[str(_m.ppd_id)] = _m
     MEDIA_BY_KEY[f"sn_{_m.sn_id}"] = _m
+
+
+def load_custom_media_specs() -> None:
+    """
+    Load optional custom media entries (imported from .emx or read from the
+    printer's 30 NVRAM slots 1..30) from custom_media.json.
+    """
+    here = pathlib.Path(__file__).resolve().parent
+    candidates = [
+        here.parent / "custom_media.json",
+        pathlib.Path("/usr/share/epson-p900-escpr-cups/custom_media.json"),
+        pathlib.Path.home() / ".config" / "epson-p900" / "custom_media.json",
+    ]
+    seen_keys = {m.key.lower() for m in MEDIA_SPECS}
+    for path in candidates:
+        if not path.is_file():
+            continue
+        try:
+            entries = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(entries, list):
+            continue
+        for item in entries:
+            if not isinstance(item, dict):
+                continue
+            slot = int(item.get("slot", 0) or 0)
+            user_media_id = int(item.get("user_media_id", 1900 + slot if 1 <= slot <= 30 else 0))
+            key = str(item.get("key") or (f"CustomSlot{slot}" if slot else "")).strip()
+            if not key or key.lower() in seen_keys:
+                continue
+            base_ref = str(item.get("base_media") or item.get("base_sn_id") or "VelvetFineArt")
+            base = MEDIA_BY_KEY.get(
+                base_ref.lower(),
+                MEDIA_BY_KEY.get(f"sn_{base_ref}", MEDIA_BY_KEY["velvetfineart"]),
+            )
+            spec = MediaSpec(
+                key=key,
+                name=str(item.get("name") or key),
+                ppd_id=int(item.get("base_ppd_id", base.ppd_id)),
+                sn_id=int(item.get("base_sn_id", base.sn_id)),
+                icc_profile=str(item.get("icc_profile") or base.icc_profile),
+                win_icc=str(item.get("win_icc") or base.win_icc),
+                is_matte=bool(item.get("is_matte", base.is_matte)),
+                default_overcoat=int(item.get("default_overcoat", base.default_overcoat)),
+                supports_carbon_black=bool(
+                    item.get("supports_carbon_black", base.supports_carbon_black)
+                ),
+                user_media_id=user_media_id,
+                print_duty=int(item.get("print_duty", 0)),
+                drying_time=int(item.get("drying_time", 0)),
+                bottom_edge_priority=bool(item.get("bottom_edge_priority", False)),
+                rubbing_reduction=int(item.get("rubbing_reduction", 0)),
+            )
+            MEDIA_SPECS.append(spec)
+            MEDIA_BY_KEY[spec.key.lower()] = spec
+            if slot:
+                MEDIA_BY_KEY[f"slot_{slot}"] = spec
+            if user_media_id:
+                MEDIA_BY_KEY[str(user_media_id)] = spec
+            seen_keys.add(spec.key.lower())
+
+
+load_custom_media_specs()
 
 
 def get_media_spec(media_option: str) -> MediaSpec:
@@ -716,6 +787,12 @@ class EscprJobConfig:
     job_name: str = "Linux_ESCPR_Job"
     job_user: str = "linux"
     job_host: str = "localhost"
+    user_media_id: int = 0                      # Custom media slot ID (1..30 or 1901..1930; 0 = use MediaSpec)
+    print_duty: Optional[int] = None            # Color density adjustment (-50..+50; None = use MediaSpec)
+    drying_time: Optional[int] = None           # Drying time per pass (0..255; None = use MediaSpec)
+    bottom_edge_priority: Optional[bool] = None # Bottom edge print quality priority (None = use MediaSpec)
+    rubbing_reduction: Optional[int] = None     # Rubbing reduction setting (None = use MediaSpec)
+    ignore_panel_mismatch: bool = True          # NonCheckPrintMode in ESC u chku (True = print without panel prompt)
 
 
 def build_remote1_hd_payload(
@@ -787,6 +864,23 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
     else:
         overcoat_val = media.default_overcoat
 
+    # Effective custom media & mechanical parameters (explicit cfg override -> MediaSpec default)
+    eff_user_media_id = cfg.user_media_id if cfg.user_media_id > 0 else media.user_media_id
+    raw_duty = cfg.print_duty if cfg.print_duty is not None else media.print_duty
+    eff_print_duty = max(-50, min(50, int(raw_duty)))
+    raw_drying = cfg.drying_time if cfg.drying_time is not None else media.drying_time
+    eff_drying = max(0, min(255, int(raw_drying)))
+    eff_bottom_edge = (
+        cfg.bottom_edge_priority
+        if cfg.bottom_edge_priority is not None
+        else media.bottom_edge_priority
+    )
+    eff_rubbing = (
+        cfg.rubbing_reduction
+        if cfg.rubbing_reduction is not None
+        else media.rubbing_reduction
+    )
+
     # Firmware PrintQuality byte for the selected media type
     q_val = resolve_firmware_print_quality(media, cfg.quality, overcoat_val)
 
@@ -840,7 +934,7 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
     out += make_remote1_cmd("US", b"\x00\x00\x01")
     out += make_remote1_cmd("US", b"\x00\x01\x00")
     out += make_remote1_cmd("US", b"\x00\x02\x01")
-    out += make_remote1_cmd("DR", b"\x00B\x00\x00")
+    out += make_remote1_cmd("DR", bytes([0x00, 0x42, 0x00, eff_drying]))
     out += make_remote1_cmd("PP", bytes([0x00, pp_m1, pp_m2]))
     out += b"\x1b\x00\x00\x00"
 
@@ -885,8 +979,20 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
     ])
     out += make_escpr_packet("m", "setm", m_setm)
 
-    # 6. ESC u chku (Print setting check, 2 bytes)
-    out += make_escpr_packet("u", "chku", b"\x01\x00")
+    # 6. ESC u chku (Print setting check, 2 bytes: [NonCheckPrintMode, CheckPaperSize])
+    out += make_escpr_packet("u", "chku", bytes([1 if cfg.ignore_panel_mismatch else 0, 0]))
+
+    # 6b. ESC q setl (Custom Media Type ID, 4 bytes: uint32 BE UserMediaTypeID)
+    if eff_user_media_id > 0:
+        out += make_escpr_packet("q", "setl", struct.pack(">I", eff_user_media_id))
+
+    # 6c. ESC m seti (Extended mechanical settings, 4 bytes: ">BHB" SingleBkPerm, RubbingReduction, BottomEdgePriority)
+    if eff_bottom_edge or eff_rubbing != 0:
+        out += make_escpr_packet(
+            "m",
+            "seti",
+            struct.pack(">BHB", 0, eff_rubbing & 0xFFFF, 1 if eff_bottom_edge else 0),
+        )
 
     # 7. ESC j setj (Job / page geometry, 22 bytes, 720 dpi units)
     margin = 0 if cfg.borderless else cfg.margin_720
@@ -906,14 +1012,14 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
     # 8. ESC p sttp (Page start, 0 bytes)
     out += make_escpr_packet("p", "sttp", b"")
 
-    # 9. ESC p setq (Page quality / LUT settings, 12 bytes)
+    # 9. ESC p setq (Page quality / LUT settings, 12 bytes; byte 5 is signed int8 PrintDuty -50..+50)
     p_setq = struct.pack(
-        ">BBBHBBBBBBB",
+        ">BBBHbBBBBBB",
         color_byte,
-        3,          # ColorPlane = 3
-        lut_byte,   # LUT = 4 (No Color Adjustment / ICC Mode)
-        220,        # Gamma = 220 (2.2)
-        0,          # PrintDuty = 0
+        3,              # ColorPlane = 3
+        lut_byte,       # LUT = 4 (No Color Adjustment / ICC Mode)
+        220,            # Gamma = 220 (2.2)
+        eff_print_duty, # PrintDuty = -50..+50 (signed int8)
         0, 0, 0, 0, 0, 0,
     )
     out += make_escpr_packet("p", "setq", p_setq)

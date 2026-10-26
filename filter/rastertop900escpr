@@ -357,6 +357,21 @@ def run_cups_filter_mode(argv: List[str]) -> int:
     else:
         color_mode = raw_cm
 
+    def _opt_int(keys: List[str]) -> Optional[int]:
+        for k in keys:
+            if k in opts:
+                try:
+                    return int(opts[k])
+                except ValueError:
+                    pass
+        return None
+
+    def _opt_bool(keys: List[str]) -> Optional[bool]:
+        for k in keys:
+            if k in opts:
+                return opts[k].lower() in ("true", "1", "yes", "on")
+        return None
+
     cfg = EscprJobConfig(
         media=opts.get("MediaType", opts.get("media", "PlainPaper")),
         input_slot=opts.get("InputSlot", "Rear"),
@@ -369,6 +384,11 @@ def run_cups_filter_mode(argv: List[str]) -> int:
         job_name=(title or f"Job_{job_id}")[:60],
         job_user=(user or "linux")[:31],
         job_host=socket.gethostname()[:31],
+        user_media_id=_opt_int(["UserMediaID", "CustomMediaSlot", "EpsonUserMediaID"]) or 0,
+        print_duty=_opt_int(["PrintDuty", "ColorDensity", "EpsonPrintDuty"]),
+        drying_time=_opt_int(["DryingTime", "EpsonDryingTime"]),
+        bottom_edge_priority=_opt_bool(["BottomEdgePriority", "EpsonBottomEdgePriority"]),
+        rubbing_reduction=_opt_int(["RubbingReduction", "EpsonRubbingReduction"]),
     )
     rendering_intent = opts.get("EpsonRenderingIntent", opts.get("RenderingIntent", "RelativeBPC"))
 
@@ -414,6 +434,11 @@ def run_cli_mode(argv: List[str]) -> int:
     parser.add_argument("--overcoat", default="Auto", choices=["Auto", "On", "Off"])
     parser.add_argument("--borderless", action="store_true")
     parser.add_argument("--unidirectional", action="store_true")
+    parser.add_argument("--user-media-id", type=int, default=0, help="Custom media slot ID (1..30 or 1901..1930) emitted via ESC q setl")
+    parser.add_argument("--print-duty", type=int, default=None, help="Color density / print duty adjustment (-50..+50) in ESC p setq")
+    parser.add_argument("--drying-time", type=int, default=None, help="Drying time per pass (0..255) in REMOTE1 DR")
+    parser.add_argument("--bottom-edge-priority", action="store_true", default=None, help="Enable bottom edge print quality priority in ESC m seti")
+    parser.add_argument("--rubbing-reduction", type=int, default=None, help="Rubbing reduction value in ESC m seti")
     parser.add_argument("-o", "--output", help="Output .prn file path (default: stdout)")
     parser.add_argument("--send", help="Send generated job directly to printer host:port (e.g. 10.10.10.124:9100)")
     parser.add_argument("--image-width-mm", type=float, default=0.0, help="Scale --image to this printed width in mm (centered)")
@@ -437,6 +462,11 @@ def run_cli_mode(argv: List[str]) -> int:
         job_name=default_job_name,
         job_user=os.environ.get("USER", "linux")[:31],
         job_host=socket.gethostname()[:31],
+        user_media_id=args.user_media_id,
+        print_duty=args.print_duty,
+        drying_time=args.drying_time,
+        bottom_edge_priority=args.bottom_edge_priority,
+        rubbing_reduction=args.rubbing_reduction,
     )
 
     paper = get_paper_size(cfg.page_size)

@@ -105,8 +105,9 @@ Rendering intents (`EpsonRenderingIntent`): `RelativeBPC` (default, ✅), `Relat
 
 | Status | Option | Notes |
 |---|---|---|
+| ✅ | LCD preview thumbnail & job metadata (`ESC t tsnd` + `REMOTE1 HD`) | 272-px baseline JPEG + TLV settings |
 | 🟡 | Black Enhance Overcoat (`EpsonOverCoat`) | on by default for glossy media |
 | 🟡 | Unidirectional printing (`Unidirectional`) | |
+| 🟡 | Custom media (`custom_media.json`, `ESC q setl`, `ESC m seti`, `PrintDuty`, `DryingTime`) | NVRAM slot ID + on-the-fly parameters |
 | 🟡/❌ | Borderless (`Borderless`) | flag is sent, but the image is not enlarged beyond the edge like Epson's "Auto Expand" |
-| ❌ | Custom media registered with Epson Media Installer | to be investigated |
 | ❌ | Duplex, CD/DVD layout helpers | |
