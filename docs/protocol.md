@@ -105,13 +105,14 @@ CheckPaperSize (0)`.
 
 ### `ESC q setl` – custom media slot ID (4 bytes, optional)
 
-`UserMediaTypeID u32 BE` (`1..30` or `1901..1930`). Sent immediately after
-`ESC u chku` when printing on a custom media slot registered in the printer's
-NVRAM via Epson Media Installer. Note that `ESC q setq` byte 0 still carries the
-**base media `sn_id`** (e.g. `25` for Velvet Fine Art or `174` for Baryta) so the
-firmware selects the right black ink (`PK`/`MK`) and halftoning LUT, while
-`ESC q setl` activates the slot's mechanical parameters (platen gap, paper
-thickness, tension, feed offset, skew check) stored in NVRAM.
+`UserMediaTypeID u32 BE` (the 32-bit `MA_ID` stored in TLV Tag `0x24` of NVRAM
+slot `1..30`, e.g. `915907607` for a user-created slot or `230009156` for an
+official `.emx` package). Sent immediately after `ESC u chku` when printing on a
+custom media slot registered in the printer's NVRAM. Note that `ESC q setq`
+byte 0 still carries the **base media `sn_id`** (e.g. `25` for Velvet Fine Art
+or `174` for Baryta) so the firmware selects the right black ink (`PK`/`MK`) and
+halftoning LUT, while `ESC q setl` activates the slot's mechanical parameters
+(platen gap, paper thickness, tension, feed offset, skew check) stored in NVRAM.
 
 ### `ESC m seti` – extended mechanical setting (4 bytes, optional)
 
@@ -135,9 +136,12 @@ used by `.emx` custom media profiles or manual density overrides).
 ### `ESC t tsnd` – LCD preview thumbnail
 
 10-byte header (`00 01 00 00 00 00` + `jpeg_len u32 BE`) followed by a
-272-pixel-tall (rotated 90° CCW to match the SC-P900's 480 × 272 touchscreen)
-4:2:0 baseline JPEG (`SOI + merged DQT + merged DHT + DRI + SOF0 + SOS + EOI`
-with 0-based component IDs `0, 1, 2` and no `APP0`/`JFIF` marker).
+272-pixel-tall (`388 × 272` for A4, rotated 90° CCW to match the SC-P900's
+480 × 272 touchscreen) baseline JPEG (`SOI + merged DQT + merged DHT + SOF0 +
+SOS + EOI` with 0-based component IDs `0, 1, 2` and no `APP0`/`JFIF` marker).
+Do not inject a `DRI` (`0xFFDD`) header unless the entropy bitstream actually
+contains `RST0..RST7` markers, otherwise the printer's hardware JPEG decoder
+rejects the thumbnail.
 
 ### `ESC d bsn2` – image band
 
@@ -145,8 +149,8 @@ with 0-based component IDs `0, 1, 2` and no `APP0`/`JFIF` marker).
 rest 0) followed by the compressed band. Bands are 16 lines (8 for the last
 partial band). Compression is Epson's RHV2: per band four planes, delta coding
 plus a fixed prefix code and run lengths; see [`docs/rhv2-spec.md`](rhv2-spec.md)
-and `src/rhv2.c`. The implementation was verified bit-for-bit against the
-official driver.
+and [`src/rhv2.rs`](../src/rhv2.rs). The implementation was verified bit-for-bit
+against the official driver.
 
 Blank bands at the end of the page are not sent; with `SkipBlankPage = 1` a
 completely white page is not printed at all.
@@ -165,6 +169,16 @@ Early versions of this driver produced this error. Causes found:
    Windows stream starts with three NUL bytes, and it does not send
    `SN 00` / `HD 00 03 03` in the job block. The driver now does the same.
    Which of the two was decisive has not been isolated.
+
+**Double ICC profiling via `colord` / `gstoraster`.**
+When active `*cupsICCProfile` directives are present in a PPD, `cupsd` registers
+those profiles with `colord`, and `cfFilterGhostscript` (`gstoraster`) queries
+`colord` (falling back to the first registered profile as the device default if
+no exact qualifier matches) and passes `-sOutputICCProfile=...` to Ghostscript.
+That causes the image to be converted twice (once in Ghostscript and once in
+`rastertop900escpr`). Emitting `*%cupsICCProfile` structured comments in the PPD
+prevents `cupsd`/`colord` from registering any upstream profiles while still
+allowing companion applications (`LumaPrint`) to read the paper-to-ICC table.
 
 **Large jobs aborted half-way.** The printer only accepts data as fast as it
 prints and can stall the TCP stream for longer than a minute (paper feed,

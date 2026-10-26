@@ -23,15 +23,25 @@ The Epson ICC profiles are not part of this repository. Run
 `./icc/fetch_icc_profiles.sh` (see [../icc/README.md](../icc/README.md)) and
 reinstall.
 
-## Colors look washed out or too saturated
+## Colors look washed out, too saturated, or double-profiled
 
-- Check that the image has the right embedded ICC profile. Images without a
-  profile are treated as sRGB; an Adobe RGB image without an embedded profile
-  will print too saturated.
-- Check that the paper selected in the job (`MediaType`) matches the paper in
-  the printer **and** the paper type set on the printer's control panel.
-- `EpsonColorMode=NoColorAdjustment` sends RGB unchanged – only use it if your
-  application already converted the image with a printer profile.
+- **Standard CUPS printing (`EpsonColorMode=EpsonICC`, default):** `gstoraster`
+  rasterizes incoming PDFs into 8-bit `sRGB`, and `rastertop900escpr` converts
+  `sRGB -> Epson Paper ICC` once via `liblcms2`. Note that our PPDs intentionally
+  use `*%cupsICCProfile` comments rather than active `*cupsICCProfile`
+  directives so `cupsd` / `colord` never apply a second ICC transformation in
+  Ghostscript upstream of `rastertop900escpr`.
+- **Wide-gamut photo printing (`LumaPrint`, darktable, GIMP, Krita):** When your
+  photo application converts from **Adobe RGB** or **ProPhoto RGB** into the
+  Epson paper ICC profile itself, select `Color Management Mode = No Color
+  Adjustment (Host ICC)` (`-o EpsonColorMode=NoColorAdjustment` or
+  `-o cm-calibration=true`) so the driver passes your pre-profiled device RGB
+  values through unchanged.
+- **Standalone CLI (`--image`):** Reads the embedded ICC profile (e.g. Adobe RGB
+  or ProPhoto RGB) directly from the image file and converts to the paper ICC
+  profile in one step. Images without an embedded profile are treated as sRGB.
+- Check that the paper selected in the job (`MediaType`) matches the paper loaded
+  in the printer.
 
 ## Nothing is printed, but the printer received data
 

@@ -96,7 +96,7 @@ The available values are listed in
 ### Command line without CUPS
 
 ```bash
-# Ink-saving test strip (8 color ramps, 1.8 × 1.8 cm) on A4 plain paper
+# Ink-saving test strip (10 color patches, 1.8 × 1.8 cm each) on A4 plain paper
 ./target/release/rastertop900escpr --test-strip --media PlainPaper -o strip.prn
 
 # Print an image 148.7 mm wide, 30.6 mm from the left and 20 mm from the top
@@ -108,6 +108,17 @@ The available values are listed in
 ```
 
 Run `./target/release/rastertop900escpr --help` for all options.
+
+## Color Management Workflows
+
+1. **Standard CUPS applications (PDF viewers, browsers, office apps):**
+   - Leave `Color Management Mode` at its default (`EpsonICC` / *Epson Official ICC Profile*).
+   - `rastertop900escpr` transforms the incoming 720 dpi sRGB CUPS raster into the official Epson ICC profile for the selected `MediaType` using `liblcms2` (`RelativeBPC` + Black Point Compensation by default) and instructs the printer firmware to disable internal color adjustment (`LUT = 4`).
+2. **Wide-gamut photo workflows (`LumaPrint`, darktable, GIMP, Krita, or `--image` CLI):**
+   - Because standard CUPS PDF-to-raster filters (`gstoraster` / `pdftoraster`) rasterize pages into 8-bit `sRGB`, wide-gamut photo applications (working in **Adobe RGB** or **ProPhoto RGB**) perform the ICC conversion (`Source ICC -> Epson Paper ICC`) themselves so they can provide soft-proofing and preserve the printer's full color gamut.
+   - When the application already converts to the paper profile, pass `-o EpsonColorMode=NoColorAdjustment` (or `-o cm-calibration=true`) so `rastertop900escpr` forwards the pre-profiled device RGB values 1:1.
+   - In standalone CLI mode (`--image photo.tif`), `rastertop900escpr` reads the embedded source ICC profile (e.g. Adobe RGB or ProPhoto RGB) directly from the image file and transforms it to the Epson paper ICC profile in a single step without any sRGB intermediate.
+   - Note: The PPD stores paper-to-profile mappings as `*%cupsICCProfile` comments so companion tools like **LumaPrint** can auto-select the matching paper profile while preventing CUPS `colord` / `gstoraster` from applying an unwanted second ICC pass upstream.
 
 ## Documentation
 

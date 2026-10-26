@@ -1,6 +1,21 @@
 # Changelog
 
-## 0.1.0 – unreleased (beta)
+## 0.2.0 – 2026-10-26 (beta)
+
+Full native **Rust** port (`rastertop900escpr`) on `main`, verified end-to-end on SC-P900 hardware.
+
+### Added
+- Native Rust implementation of the CUPS filter and standalone CLI (`src/main.rs`, `src/rhv2.rs`, `src/icc.rs`, `src/protocol.rs`, `src/cups_raster.rs`, `src/ppd.rs`), replacing the Python/C prototype (preserved on the `python-prototype` branch).
+- Band-wise 16-row streaming in CUPS filter mode (`< 2 MB` peak RAM even for A2 @ 720 dpi) including streaming generation of the 388 × 272 rotated LCD preview thumbnail (`ESC t tsnd`).
+- Passive `custom_media.json` discovery for the printer's 30 NVRAM custom media slots (`ESC q setl` with 32-bit `MA_ID` from TLV Tag `0x24`, `ESC m seti` for `RubbingReduction` + `BottomEdgePriority`, `PrintDuty` in `ESC p setq`, `DryingTime` in `REMOTE1 DR`) and dynamic per-job overrides (`EpsonUserMediaID`, `EpsonPrintDuty`, `EpsonDryingTime`, `EpsonBottomEdgePriority`, `EpsonRubbingReduction`).
+- `*%cupsICCProfile` metadata comments in generated PPDs and `cm-calibration=true` support for **LumaPrint** integration without triggering `colord` / `gstoraster` double-profiling.
+
+### Fixed
+- Prevented `colord` / `cfFilterGhostscript` (`gstoraster`) from applying an unwanted upstream ICC transformation (or `colord` default-profile fallback) before `rastertop900escpr`.
+- Removed unused `DRI` (`0xFFDD`) marker from `ESC t tsnd` when the JPEG encoder does not emit `RSTm` markers, and fixed rotated thumbnail dimensions to `388 × 272` (`height = 272`).
+- Prevented 1-pixel horizontal/vertical rounding differences in CUPS `ImageableArea` from triggering margin cropping in `run_cups_filter`.
+
+## 0.1.0 – 2026-10-25 (python-prototype)
 
 First working version, verified on an SC-P900.
 
