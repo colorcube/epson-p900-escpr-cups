@@ -1167,7 +1167,7 @@ pub fn normalize_tsnd_jpeg(raw_jpeg: &[u8]) -> Vec<u8> {
 
     let mut dqts: Vec<Vec<u8>> = Vec::new();
     let mut dhts: HashMap<u8, Vec<u8>> = HashMap::new();
-    let mut dri_seg: Vec<u8> = vec![0xFF, 0xDD, 0x00, 0x04, 0x00, 0x04];
+    let mut dri_seg: Vec<u8> = Vec::new();
     let mut sof0_payload: Vec<u8> = Vec::new();
     let mut sos_and_scan: Vec<u8> = Vec::new();
 

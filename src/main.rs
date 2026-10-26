@@ -264,10 +264,12 @@ fn run_cups_filter(args: &[String]) -> i32 {
         let dst_w = print_w as usize;
         let dst_h = print_h as usize;
 
-        // Prepare tiny 272-px rotated thumbnail buffer (~155 KB) filled on the fly
-        let thumb_w = 272u32;
-        let thumb_h = ((u64::from(print_w) * 272) / u64::from(print_h.max(1))).max(1) as u32;
-        let mut thumb_img = RgbImage::from_pixel(thumb_w, thumb_h, Rgb([255, 255, 255]));
+        // Prepare tiny 272-px-tall rotated thumbnail buffer (e.g. 388x272 for A4, ~316 KB)
+        let portrait_w = 272u32;
+        let portrait_h = ((u64::from(print_h) * 272 + u64::from(print_w) / 2)
+            / u64::from(print_w.max(1)))
+        .max(16) as u32;
+        let mut thumb_img = RgbImage::from_pixel(portrait_h, portrait_w, Rgb([255, 255, 255]));
 
         // If CUPS rendered the full page (including margins), crop by (m_lr, m_tb).
         let crop_x = if src_w > dst_w {
@@ -319,25 +321,26 @@ fn run_cups_filter(args: &[String]) -> i32 {
                     dst_slice.copy_from_slice(src_slice);
                 }
 
-                // Sample into the 272-px rotated thumbnail if this scanline maps to a thumbnail column
+                // Sample into the rotated (portrait_h x portrait_w) thumbnail
                 let cur_y = (iy + r) as u64;
-                let ty = ((cur_y * u64::from(thumb_w)) / u64::from(print_h.max(1)))
-                    .min(u64::from(thumb_w - 1)) as u32;
-                let prev_ty = if cur_y == 0 {
+                let py = ((cur_y * u64::from(portrait_h)) / u64::from(print_h.max(1)))
+                    .min(u64::from(portrait_h - 1)) as u32;
+                let prev_py = if cur_y == 0 {
                     u32::MAX
                 } else {
-                    (((cur_y - 1) * u64::from(thumb_w)) / u64::from(print_h.max(1)))
-                        .min(u64::from(thumb_w - 1)) as u32
+                    (((cur_y - 1) * u64::from(portrait_h)) / u64::from(print_h.max(1)))
+                        .min(u64::from(portrait_h - 1)) as u32
                 };
-                if ty != prev_ty {
+                if py != prev_py {
                     let row_slice = &band_buf[r * dst_w * 3..(r + 1) * dst_w * 3];
-                    for tx in 0..thumb_h {
-                        let sx = ((u64::from(tx) * u64::from(print_w)) / u64::from(thumb_h))
+                    for px in 0..portrait_w {
+                        let sx = ((u64::from(px) * u64::from(print_w)) / u64::from(portrait_w))
                             .min(u64::from(print_w.saturating_sub(1)))
                             as usize;
                         let off = sx * 3;
                         let p = Rgb([row_slice[off], row_slice[off + 1], row_slice[off + 2]]);
-                        thumb_img.put_pixel(ty, thumb_h - 1 - tx, p);
+                        // 90° CCW rotation: (px, py) -> (py, portrait_w - 1 - px)
+                        thumb_img.put_pixel(py, portrait_w - 1 - px, p);
                     }
                 }
             }
@@ -387,7 +390,7 @@ fn run_cups_filter(args: &[String]) -> i32 {
         }
 
         let mut jpeg_buf = Vec::with_capacity(16384);
-        let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 85);
+        let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 95);
         if enc
             .encode(
                 thumb_img.as_raw(),
@@ -421,32 +424,35 @@ fn run_cups_filter(args: &[String]) -> i32 {
     0
 }
 
-/// Build the 272-px rotated baseline JPEG LCD preview thumbnail for `ESC t tsnd`.
+/// Build the 272-px-tall rotated baseline JPEG LCD preview thumbnail (`388x272` for A4)
+/// for `ESC t tsnd`.
 fn build_preview_jpeg(page_rgb: &[u8], print_w: u32, print_h: u32) -> Option<Vec<u8>> {
     if print_w == 0 || print_h == 0 {
         return None;
     }
-    let thumb_w = 272u32;
-    let thumb_h = ((u64::from(print_w) * 272) / u64::from(print_h)).max(1) as u32;
+    let portrait_w = 272u32;
+    let portrait_h = ((u64::from(print_h) * 272 + u64::from(print_w) / 2)
+        / u64::from(print_w.max(1)))
+    .max(16) as u32;
 
-    // Downsample directly into a (thumb_w x thumb_h) rotated 90° CCW image
+    // Downsample directly into a (portrait_h x portrait_w) rotated 90° CCW image
     // so we don't allocate a duplicate 50M-pixel DynamicImage.
-    let mut small = RgbImage::new(thumb_w, thumb_h);
-    for ty in 0..thumb_w {
-        let sy = ((u64::from(ty) * u64::from(print_h)) / u64::from(thumb_w))
+    let mut small = RgbImage::new(portrait_h, portrait_w);
+    for py in 0..portrait_h {
+        let sy = ((u64::from(py) * u64::from(print_h)) / u64::from(portrait_h))
             .min(u64::from(print_h - 1)) as usize;
-        for tx in 0..thumb_h {
-            let sx = ((u64::from(tx) * u64::from(print_w)) / u64::from(thumb_h))
+        for px in 0..portrait_w {
+            let sx = ((u64::from(px) * u64::from(print_w)) / u64::from(portrait_w))
                 .min(u64::from(print_w - 1)) as usize;
             let idx = (sy * (print_w as usize) + sx) * 3;
             let p = Rgb([page_rgb[idx], page_rgb[idx + 1], page_rgb[idx + 2]]);
-            // Rotate 90° counter-clockwise: (tx, ty) -> (ty, thumb_h - 1 - tx)
-            small.put_pixel(ty, thumb_h - 1 - tx, p);
+            // Rotate 90° counter-clockwise: (px, py) -> (py, portrait_w - 1 - px)
+            small.put_pixel(py, portrait_w - 1 - px, p);
         }
     }
 
     let mut jpeg_buf = Vec::with_capacity(16384);
-    let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 85);
+    let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 95);
     if enc
         .encode(
             small.as_raw(),
@@ -462,36 +468,48 @@ fn build_preview_jpeg(page_rgb: &[u8], print_w: u32, print_h: u32) -> Option<Vec
     }
 }
 
-/// Generate a synthetic 1.8 x 1.8 cm calibration patch at 720 dpi (510 x 510 px).
-fn generate_test_strip_image() -> RgbImage {
-    let w = 510u32;
-    let h = 510u32;
-    let mut img = RgbImage::from_pixel(w, h, Rgb([255, 255, 255]));
-    let ramp_colors: [(u8, u8, u8); 8] = [
-        (0, 0, 0),       // K
-        (0, 174, 239),   // C
-        (236, 0, 140),   // M
-        (255, 242, 0),   // Y
-        (237, 28, 36),   // R
-        (0, 166, 81),    // G
-        (46, 49, 146),   // B
-        (102, 45, 145),  // Violet
+/// Generate the 10-patch diagnostic row (each patch <= 1.8 x 1.8 cm at 720 dpi)
+/// across the top of the page.
+fn generate_test_strip_image(print_w: u32) -> RgbImage {
+    let patches: [(u8, u8, u8); 10] = [
+        (0, 0, 0),       // PK/MK
+        (110, 110, 110), // LK
+        (190, 190, 190), // LLK
+        (0, 255, 255),   // Cyan
+        (255, 0, 255),   // Magenta
+        (255, 255, 0),   // Yellow
+        (255, 0, 0),     // Red
+        (0, 255, 0),     // Green
+        (0, 0, 255),     // Blue
+        (96, 0, 255),    // Violet
     ];
-    let bar_h = h / (ramp_colors.len() as u32);
-    for (idx, &(cr, cg, cb)) in ramp_colors.iter().enumerate() {
-        let y0 = (idx as u32) * bar_h;
-        let y1 = if idx + 1 == ramp_colors.len() {
-            h
-        } else {
-            y0 + bar_h - 2
-        };
+    let patch_px = 510u32; // 18.0 mm at 720 dpi
+    let gap_px = 56u32;
+    let top_pad = 64u32;
+    let bottom_pad = 32u32;
+    let img_h = (top_pad + patch_px + bottom_pad).div_ceil(16) * 16;
+
+    let mut img = RgbImage::from_pixel(print_w, img_h, Rgb([255, 255, 255]));
+    let total_strip_w = (patches.len() as u32) * patch_px + ((patches.len() - 1) as u32) * gap_px;
+    let x0_start = if print_w > total_strip_w {
+        ((print_w - total_strip_w) / 2).max(16)
+    } else {
+        16
+    };
+
+    for (idx, &(r, g, b)) in patches.iter().enumerate() {
+        let x0 = x0_start + (idx as u32) * (patch_px + gap_px);
+        let x1 = (x0 + patch_px).min(print_w);
+        let y0 = top_pad;
+        let y1 = top_pad + patch_px;
         for y in y0..y1 {
-            for x in 0..w {
-                let t = f32::from(x as u16) / f32::from((w - 1) as u16);
-                let r = (255.0 * (1.0 - t) + f32::from(cr) * t).round() as u8;
-                let g = (255.0 * (1.0 - t) + f32::from(cg) * t).round() as u8;
-                let b = (255.0 * (1.0 - t) + f32::from(cb) * t).round() as u8;
-                img.put_pixel(x, y, Rgb([r, g, b]));
+            for x in x0..x1 {
+                let is_border = x < x0 + 2 || x + 2 >= x1 || y < y0 + 2 || y + 2 >= y1;
+                if is_border {
+                    img.put_pixel(x, y, Rgb([80, 80, 80]));
+                } else {
+                    img.put_pixel(x, y, Rgb([r, g, b]));
+                }
             }
         }
     }
@@ -726,6 +744,14 @@ fn run_cli(args: &[String]) -> i32 {
         cfg.margin_720 = 0;
     }
 
+    let paper = get_paper_size(&cfg.page_size, cfg.custom_w_720, cfg.custom_h_720);
+    let (margin_lr, margin_tb) =
+        get_slot_margins_720(&cfg.input_slot, cfg.borderless, cfg.margin_720);
+    let m_lr = u32::try_from(margin_lr.max(0)).unwrap_or(0);
+    let m_tb = u32::try_from(margin_tb.max(0)).unwrap_or(0);
+    let print_w = paper.width_720.saturating_sub(2 * m_lr);
+    let print_h = paper.height_720.saturating_sub(2 * m_tb);
+
     let (src_img, embedded_icc) = if let Some(ref p) = image_path {
         if let Some(stem) = p.file_stem().and_then(|s| s.to_str()) {
             cfg.job_name = stem.to_string();
@@ -739,16 +765,8 @@ fn run_cli(args: &[String]) -> i32 {
         }
     } else {
         cfg.job_name = "TestStrip_18x18mm".to_string();
-        (generate_test_strip_image(), None)
+        (generate_test_strip_image(print_w), None)
     };
-
-    let paper = get_paper_size(&cfg.page_size, cfg.custom_w_720, cfg.custom_h_720);
-    let (margin_lr, margin_tb) =
-        get_slot_margins_720(&cfg.input_slot, cfg.borderless, cfg.margin_720);
-    let m_lr = u32::try_from(margin_lr.max(0)).unwrap_or(0);
-    let m_tb = u32::try_from(margin_tb.max(0)).unwrap_or(0);
-    let print_w = paper.width_720.saturating_sub(2 * m_lr);
-    let print_h = paper.height_720.saturating_sub(2 * m_tb);
 
     let mm_to_px = |mm: f64| -> i64 { ((mm * 720.0) / 25.4).round() as i64 };
     let (iw, ih) = src_img.dimensions();
