@@ -1,0 +1,221 @@
+*PPD-Adobe: "4.3"
+*FormatVersion: "4.3"
+*FileVersion: "1.0"
+*LanguageVersion: English
+*LanguageEncoding: ISOLatin1
+*PCFileName: "Epson-SC-P90"
+*Manufacturer: "EPSON"
+*Product: "(SureColor SC-P900)"
+*ModelName: "EPSON SureColor SC-P900"
+*ShortNickName: "EPSON SC-P900 (ESCPR+ICC)"
+*NickName: "EPSON SureColor SC-P900 - Official ICC + ESC/P-R Lv5"
+*PSVersion: "(3010.000) 0"
+*LanguageLevel: "3"
+*ColorDevice: True
+*DefaultColorSpace: RGB
+*FileSystem: False
+*Throughput: "1"
+*LandscapeOrientation: Plus90
+*VariablePaperSize: True
+*TTRasterizer: Type42
+*cupsVersion: 2.3
+*cupsModelNumber: 1
+*cupsManualCopies: False
+*cupsFilter: "application/vnd.cups-raster 50 rastertop900escpr"
+*1284DeviceID: "MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,END4;MDL:SC-P900 Series;CLS:PRINTER;"
+
+*cupsICCProfile RGB.PremiumGlossy./Epson Premium Glossy: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_EpsonPremiumGlossy.icc"
+*cupsICCProfile RGB.PremiumSemigloss./Epson Premium Semigloss: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_EpsonPremiumSemigloss.icc"
+*cupsICCProfile RGB.PremiumLuster./Epson Premium Luster Photo Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_PremiumLusterPhotoPaper.icc"
+*cupsICCProfile RGB.PhotoPaperGlossy./Photo Paper Glossy: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_PhotoPaperGlossy.icc"
+*cupsICCProfile RGB.Baryta./Epson Traditional Photo Paper - Baryta: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_Baryta.icc"
+*cupsICCProfile RGB.VelvetFineArt./Velvet Fine Art Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_VelvetFineArtPaper.icc"
+*cupsICCProfile RGB.UltraSmoothFineArt./Epson UltraSmooth Fine Art Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_UltraSmoothFineArtPaper.icc"
+*cupsICCProfile RGB.WatercolorRadiantWhite./Watercolor Paper Radiant White: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_WatercolorPaperRadiantWhite.icc"
+*cupsICCProfile RGB.FineArtMatte./Signature Worthy - Fine Art Matte: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_FineArtMatte.icc"
+*cupsICCProfile RGB.Washi./Japanese Kozo Paper Thin - Washi: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_Washi.icc"
+*cupsICCProfile RGB.ArchivalMatte./Epson Archival - Enhanced Matte Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_ArchivalMattePaper.icc"
+*cupsICCProfile RGB.PhotoQualityInkJet./Epson Photo Quality Ink Jet: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_ArchivalMattePaper.icc"
+*cupsICCProfile RGB.CanvasSatin./Exhibition Canvas Satin: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_CanvasSatin.icc"
+*cupsICCProfile RGB.CanvasMatte./Exhibition Canvas Matte: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_CanvasMatte.icc"
+*cupsICCProfile RGB.PlainPaper./Plain Paper - Bright White Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_Standard.icc"
+*cupsICCProfile RGB.ProofingWhiteSemimatte./Epson Proofing Paper White Semimatte: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_ProofingPaperWhiteSemimatte.icc"
+*cupsICCProfile RGB.DiscLabel./CD-DVD Disc Label: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_Standard.icc"
+*cupsICCProfile RGB.DiscLabelPremium./CD-DVD Premium Surface: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_Standard.icc"
+
+*OpenUI *PageSize/Page Size: PickOne
+*OrderDependency: 10 AnySetup *PageSize
+*DefaultPageSize: A4
+*PageSize A4/A4 (210 x 297 mm): "<</PageSize[595.28 841.89]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize A3/A3 (297 x 420 mm): "<</PageSize[841.89 1190.55]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize A3Plus/A3+ - Super B (329 x 483 mm): "<</PageSize[932.60 1369.13]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize A2/A2 (420 x 594 mm): "<</PageSize[1190.55 1683.78]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize A5/A5 (148 x 210 mm): "<</PageSize[419.53 595.28]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize A6/A6 (105 x 148 mm): "<</PageSize[297.64 419.53]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize Letter/US Letter (8.5 x 11 in): "<</PageSize[612.00 792.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize Legal/US Legal (8.5 x 14 in): "<</PageSize[612.00 1008.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 4x6/4 x 6 in (102 x 152 mm): "<</PageSize[288.00 432.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 5x7/5 x 7 in (127 x 178 mm): "<</PageSize[360.00 504.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 8x10/8 x 10 in (203 x 254 mm): "<</PageSize[576.00 720.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 10x12/10 x 12 in (254 x 305 mm): "<</PageSize[720.00 864.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 11x14/11 x 14 in (279 x 356 mm): "<</PageSize[792.00 1008.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 12x12/12 x 12 in (305 x 305 mm): "<</PageSize[864.00 864.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 11x17/11 x 17 in - Tabloid: "<</PageSize[792.00 1224.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 16x20/16 x 20 in (406 x 508 mm): "<</PageSize[1152.00 1440.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageSize 17x22/17 x 22 in - US C (432x559mm): "<</PageSize[1224.00 1584.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageSize
+
+*OpenUI *PageRegion/Page Region: PickOne
+*OrderDependency: 10 AnySetup *PageRegion
+*DefaultPageRegion: A4
+*PageRegion A4/A4 (210 x 297 mm): "<</PageSize[595.28 841.89]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion A3/A3 (297 x 420 mm): "<</PageSize[841.89 1190.55]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion A3Plus/A3+ - Super B (329 x 483 mm): "<</PageSize[932.60 1369.13]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion A2/A2 (420 x 594 mm): "<</PageSize[1190.55 1683.78]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion A5/A5 (148 x 210 mm): "<</PageSize[419.53 595.28]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion A6/A6 (105 x 148 mm): "<</PageSize[297.64 419.53]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion Letter/US Letter (8.5 x 11 in): "<</PageSize[612.00 792.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion Legal/US Legal (8.5 x 14 in): "<</PageSize[612.00 1008.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 4x6/4 x 6 in (102 x 152 mm): "<</PageSize[288.00 432.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 5x7/5 x 7 in (127 x 178 mm): "<</PageSize[360.00 504.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 8x10/8 x 10 in (203 x 254 mm): "<</PageSize[576.00 720.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 10x12/10 x 12 in (254 x 305 mm): "<</PageSize[720.00 864.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 11x14/11 x 14 in (279 x 356 mm): "<</PageSize[792.00 1008.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 12x12/12 x 12 in (305 x 305 mm): "<</PageSize[864.00 864.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 11x17/11 x 17 in - Tabloid: "<</PageSize[792.00 1224.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 16x20/16 x 20 in (406 x 508 mm): "<</PageSize[1152.00 1440.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*PageRegion 17x22/17 x 22 in - US C (432x559mm): "<</PageSize[1224.00 1584.00]/HWResolution[720 720]/cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1/ImagingBBox null>>setpagedevice"
+*CloseUI: *PageRegion
+
+*OpenUI *ColorModel/Color Model: PickOne
+*OrderDependency: 15 AnySetup *ColorModel
+*DefaultColorModel: RGB
+*ColorModel RGB/24-bit RGB Color: "<</cupsBitsPerColor 8/cupsColorOrder 0/cupsColorSpace 1>>setpagedevice"
+*CloseUI: *ColorModel
+
+*DefaultImageableArea: A4
+*ImageableArea A4/A4 (210 x 297 mm): "8.40 8.40 586.88 833.49"
+*ImageableArea A3/A3 (297 x 420 mm): "8.40 8.40 833.49 1182.15"
+*ImageableArea A3Plus/A3+ - Super B (329 x 483 mm): "8.40 8.40 924.20 1360.73"
+*ImageableArea A2/A2 (420 x 594 mm): "8.40 8.40 1182.15 1675.38"
+*ImageableArea A5/A5 (148 x 210 mm): "8.40 8.40 411.13 586.88"
+*ImageableArea A6/A6 (105 x 148 mm): "8.40 8.40 289.24 411.13"
+*ImageableArea Letter/US Letter (8.5 x 11 in): "8.40 8.40 603.60 783.60"
+*ImageableArea Legal/US Legal (8.5 x 14 in): "8.40 8.40 603.60 999.60"
+*ImageableArea 4x6/4 x 6 in (102 x 152 mm): "8.40 8.40 279.60 423.60"
+*ImageableArea 5x7/5 x 7 in (127 x 178 mm): "8.40 8.40 351.60 495.60"
+*ImageableArea 8x10/8 x 10 in (203 x 254 mm): "8.40 8.40 567.60 711.60"
+*ImageableArea 10x12/10 x 12 in (254 x 305 mm): "8.40 8.40 711.60 855.60"
+*ImageableArea 11x14/11 x 14 in (279 x 356 mm): "8.40 8.40 783.60 999.60"
+*ImageableArea 12x12/12 x 12 in (305 x 305 mm): "8.40 8.40 855.60 855.60"
+*ImageableArea 11x17/11 x 17 in - Tabloid: "8.40 8.40 783.60 1215.60"
+*ImageableArea 16x20/16 x 20 in (406 x 508 mm): "8.40 8.40 1143.60 1431.60"
+*ImageableArea 17x22/17 x 22 in - US C (432x559mm): "8.40 8.40 1215.60 1575.60"
+
+*DefaultPaperDimension: A4
+*PaperDimension A4/A4 (210 x 297 mm): "595.28 841.89"
+*PaperDimension A3/A3 (297 x 420 mm): "841.89 1190.55"
+*PaperDimension A3Plus/A3+ - Super B (329 x 483 mm): "932.60 1369.13"
+*PaperDimension A2/A2 (420 x 594 mm): "1190.55 1683.78"
+*PaperDimension A5/A5 (148 x 210 mm): "419.53 595.28"
+*PaperDimension A6/A6 (105 x 148 mm): "297.64 419.53"
+*PaperDimension Letter/US Letter (8.5 x 11 in): "612.00 792.00"
+*PaperDimension Legal/US Legal (8.5 x 14 in): "612.00 1008.00"
+*PaperDimension 4x6/4 x 6 in (102 x 152 mm): "288.00 432.00"
+*PaperDimension 5x7/5 x 7 in (127 x 178 mm): "360.00 504.00"
+*PaperDimension 8x10/8 x 10 in (203 x 254 mm): "576.00 720.00"
+*PaperDimension 10x12/10 x 12 in (254 x 305 mm): "720.00 864.00"
+*PaperDimension 11x14/11 x 14 in (279 x 356 mm): "792.00 1008.00"
+*PaperDimension 12x12/12 x 12 in (305 x 305 mm): "864.00 864.00"
+*PaperDimension 11x17/11 x 17 in - Tabloid: "792.00 1224.00"
+*PaperDimension 16x20/16 x 20 in (406 x 508 mm): "1152.00 1440.00"
+*PaperDimension 17x22/17 x 22 in - US C (432x559mm): "1224.00 1584.00"
+
+*OpenUI *MediaType/Media Type: PickOne
+*OrderDependency: 20 AnySetup *MediaType
+*DefaultMediaType: PlainPaper
+*MediaType PremiumGlossy/Epson Premium Glossy: "<</MediaType(PremiumGlossy)>>setpagedevice"
+*MediaType PremiumSemigloss/Epson Premium Semigloss: "<</MediaType(PremiumSemigloss)>>setpagedevice"
+*MediaType PremiumLuster/Epson Premium Luster Photo Paper: "<</MediaType(PremiumLuster)>>setpagedevice"
+*MediaType PhotoPaperGlossy/Photo Paper Glossy: "<</MediaType(PhotoPaperGlossy)>>setpagedevice"
+*MediaType Baryta/Epson Traditional Photo Paper - Baryta: "<</MediaType(Baryta)>>setpagedevice"
+*MediaType VelvetFineArt/Velvet Fine Art Paper: "<</MediaType(VelvetFineArt)>>setpagedevice"
+*MediaType UltraSmoothFineArt/Epson UltraSmooth Fine Art Paper: "<</MediaType(UltraSmoothFineArt)>>setpagedevice"
+*MediaType WatercolorRadiantWhite/Watercolor Paper Radiant White: "<</MediaType(WatercolorRadiantWhite)>>setpagedevice"
+*MediaType FineArtMatte/Signature Worthy - Fine Art Matte: "<</MediaType(FineArtMatte)>>setpagedevice"
+*MediaType Washi/Japanese Kozo Paper Thin - Washi: "<</MediaType(Washi)>>setpagedevice"
+*MediaType ArchivalMatte/Epson Archival - Enhanced Matte Paper: "<</MediaType(ArchivalMatte)>>setpagedevice"
+*MediaType PhotoQualityInkJet/Epson Photo Quality Ink Jet: "<</MediaType(PhotoQualityInkJet)>>setpagedevice"
+*MediaType CanvasSatin/Exhibition Canvas Satin: "<</MediaType(CanvasSatin)>>setpagedevice"
+*MediaType CanvasMatte/Exhibition Canvas Matte: "<</MediaType(CanvasMatte)>>setpagedevice"
+*MediaType PlainPaper/Plain Paper - Bright White Paper: "<</MediaType(PlainPaper)>>setpagedevice"
+*MediaType ProofingWhiteSemimatte/Epson Proofing Paper White Semimatte: "<</MediaType(ProofingWhiteSemimatte)>>setpagedevice"
+*MediaType DiscLabel/CD-DVD Disc Label: "<</MediaType(DiscLabel)>>setpagedevice"
+*MediaType DiscLabelPremium/CD-DVD Premium Surface: "<</MediaType(DiscLabelPremium)>>setpagedevice"
+*CloseUI: *MediaType
+
+*OpenUI *InputSlot/Paper Source: PickOne
+*OrderDependency: 25 AnySetup *InputSlot
+*DefaultInputSlot: Rear
+*InputSlot Rear/Sheet Feeder (Rear): ""
+*InputSlot FrontFineArt/Front - Fine Art - Thick Paper: ""
+*InputSlot FrontThick/Front - Thick Paper: ""
+*InputSlot FrontPosterBoard/Front - Poster Board (Straight Path): ""
+*InputSlot FrontNoEjectRoller/Front - Glossy (No Eject Roller): ""
+*InputSlot DiscTray/CD-DVD Disc Tray: ""
+*InputSlot Roll/Roll Paper: ""
+*CloseUI: *InputSlot
+
+*OpenUI *PrintQuality/Print Quality: PickOne
+*OrderDependency: 30 AnySetup *PrintQuality
+*DefaultPrintQuality: High
+*PrintQuality Normal/Standard (720 x 720 dpi): ""
+*PrintQuality Fine/Fine (1440 x 720 dpi): ""
+*PrintQuality High/High Quality Photo (1440 x 1440 dpi): ""
+*PrintQuality Max/Max Quality SuperPhoto (5760 x 1440 dpi): ""
+*PrintQuality CarbonBlack/Max Quality - Carbon Black (5760 x 1440 dpi): ""
+*CloseUI: *PrintQuality
+
+*OpenUI *EpsonColorMode/Color Management Mode: PickOne
+*OrderDependency: 35 AnySetup *EpsonColorMode
+*DefaultEpsonColorMode: EpsonICC
+*EpsonColorMode EpsonICC/Epson Official ICC Profile (Windows and macOS Quality): ""
+*EpsonColorMode NoColorAdjustment/No Color Adjustment (Application Managed): ""
+*EpsonColorMode EpsonStandard/Printer Internal sRGB (Epson Standard LUT): ""
+*EpsonColorMode AdvancedBW/Advanced Black and White Photo: ""
+*CloseUI: *EpsonColorMode
+
+*OpenUI *EpsonRenderingIntent/ICC Rendering Intent: PickOne
+*OrderDependency: 40 AnySetup *EpsonRenderingIntent
+*DefaultEpsonRenderingIntent: RelativeBPC
+*EpsonRenderingIntent RelativeBPC/Relative Colorimetric + Black Point Compensation: ""
+*EpsonRenderingIntent Perceptual/Perceptual: ""
+*EpsonRenderingIntent RelativeNoBPC/Relative Colorimetric (No BPC): ""
+*EpsonRenderingIntent Saturation/Saturation: ""
+*EpsonRenderingIntent Absolute/Absolute Colorimetric: ""
+*CloseUI: *EpsonRenderingIntent
+
+*OpenUI *EpsonOverCoat/Black Enhance Overcoat (BEO): PickOne
+*OrderDependency: 45 AnySetup *EpsonOverCoat
+*DefaultEpsonOverCoat: Auto
+*EpsonOverCoat Auto/Auto (Enabled on Glossy, Luster, Baryta): ""
+*EpsonOverCoat On/On: ""
+*EpsonOverCoat Off/Off: ""
+*CloseUI: *EpsonOverCoat
+
+*OpenUI *Borderless/Borderless Printing: Boolean
+*OrderDependency: 50 AnySetup *Borderless
+*DefaultBorderless: False
+*Borderless False/Off (Standard 3 mm Margins): ""
+*Borderless True/On (Borderless): ""
+*CloseUI: *Borderless
+
+*OpenUI *Unidirectional/Print Head Direction: Boolean
+*OrderDependency: 55 AnySetup *Unidirectional
+*DefaultUnidirectional: False
+*Unidirectional False/Bidirectional (Faster): ""
+*Unidirectional True/Unidirectional (Highest Precision): ""
+*CloseUI: *Unidirectional
+
+*DefaultFont: Courier
+*Font Courier: Standard "(001.001)" Standard ROM

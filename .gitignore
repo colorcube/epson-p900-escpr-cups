@@ -1,0 +1,18 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Build / test artifacts
+build/
+dist/
+*.so
+*.prn
+*.ras
+
+# Proprietary Epson ICC profiles (extracted locally via icc/fetch_icc_profiles.sh)
+icc/*.icc
+icc/*.ICC
+icc/*.icm
+icc/*.ICM
+icc/_tmp_extract/
