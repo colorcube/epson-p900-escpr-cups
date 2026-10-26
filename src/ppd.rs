@@ -72,7 +72,7 @@ pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
             format!("/usr/share/color/icc/epson-scp900/{}", m.icc_profile)
         };
         lines.push(format!(
-            "*cupsICCProfile RGB.{ppd_key}./{safe_name}: \"{icc_val}\""
+            "*cupsICCProfile RGB.{ppd_key}.E/{safe_name}: \"{icc_val}\""
         ));
     }
 

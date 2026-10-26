@@ -88,16 +88,29 @@ fn build_config_from_cups_opts(
         .get("PrintQuality")
         .cloned()
         .unwrap_or_else(|| "High".to_string());
-    let color_mode = opts
-        .get("EpsonColorMode")
-        .cloned()
-        .unwrap_or_else(|| "EpsonICC".to_string());
+    let cm_calib = opts.get("cm-calibration").is_some_and(|v| parse_bool(v));
+    let raw_color_mode = opts.get("EpsonColorMode").or_else(|| opts.get("ColorMode"));
+    let color_mode = match raw_color_mode {
+        None => {
+            if cm_calib {
+                "NoColorAdjustment".to_string()
+            } else {
+                "EpsonICC".to_string()
+            }
+        }
+        Some(cm) if cm_calib && cm.eq_ignore_ascii_case("EpsonICC") => {
+            "NoColorAdjustment".to_string()
+        }
+        Some(cm) => cm.clone(),
+    };
     let intent = opts
         .get("EpsonRenderingIntent")
+        .or_else(|| opts.get("RenderingIntent"))
         .cloned()
         .unwrap_or_else(|| "RelativeBPC".to_string());
     let overcoat = opts
         .get("EpsonOverCoat")
+        .or_else(|| opts.get("OverCoat"))
         .cloned()
         .unwrap_or_else(|| "Auto".to_string());
     let borderless = opts.get("Borderless").is_some_and(|v| parse_bool(v));
@@ -105,38 +118,54 @@ fn build_config_from_cups_opts(
 
     let user_media_id = opts
         .get("EpsonUserMediaID")
+        .or_else(|| opts.get("UserMediaID"))
+        .or_else(|| opts.get("CustomMediaSlot"))
         .and_then(|v| v.parse::<u32>().ok())
         .unwrap_or(0);
-    let print_duty = opts.get("EpsonPrintDuty").and_then(|v| {
-        if v.eq_ignore_ascii_case("auto") {
-            None
-        } else {
-            v.parse::<i8>().ok()
-        }
-    });
-    let drying_time = opts.get("EpsonDryingTime").and_then(|v| {
-        if v.eq_ignore_ascii_case("auto") {
-            None
-        } else {
-            v.parse::<u8>().ok()
-        }
-    });
-    let bottom_edge_priority = opts.get("EpsonBottomEdgePriority").and_then(|v| {
-        if v.eq_ignore_ascii_case("auto") {
-            None
-        } else {
-            Some(parse_bool(v))
-        }
-    });
-    let rubbing_reduction = opts.get("EpsonRubbingReduction").and_then(|v| {
-        if v.eq_ignore_ascii_case("auto") {
-            None
-        } else {
-            v.parse::<u16>().ok()
-        }
-    });
+    let print_duty = opts
+        .get("EpsonPrintDuty")
+        .or_else(|| opts.get("PrintDuty"))
+        .or_else(|| opts.get("ColorDensity"))
+        .and_then(|v| {
+            if v.eq_ignore_ascii_case("auto") {
+                None
+            } else {
+                v.parse::<i8>().ok()
+            }
+        });
+    let drying_time = opts
+        .get("EpsonDryingTime")
+        .or_else(|| opts.get("DryingTime"))
+        .and_then(|v| {
+            if v.eq_ignore_ascii_case("auto") {
+                None
+            } else {
+                v.parse::<u8>().ok()
+            }
+        });
+    let bottom_edge_priority = opts
+        .get("EpsonBottomEdgePriority")
+        .or_else(|| opts.get("BottomEdgePriority"))
+        .and_then(|v| {
+            if v.eq_ignore_ascii_case("auto") {
+                None
+            } else {
+                Some(parse_bool(v))
+            }
+        });
+    let rubbing_reduction = opts
+        .get("EpsonRubbingReduction")
+        .or_else(|| opts.get("RubbingReduction"))
+        .and_then(|v| {
+            if v.eq_ignore_ascii_case("auto") {
+                None
+            } else {
+                v.parse::<u16>().ok()
+            }
+        });
     let ignore_panel_mismatch = opts
         .get("EpsonIgnorePanelMismatch")
+        .or_else(|| opts.get("IgnorePanelMismatch"))
         .map_or(true, |v| parse_bool(v));
 
     let cfg = EscprJobConfig {
