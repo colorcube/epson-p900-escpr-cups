@@ -301,13 +301,15 @@ fn run_cups_filter(args: &[String]) -> i32 {
         let mut thumb_img = RgbImage::from_pixel(portrait_h, portrait_w, Rgb([255, 255, 255]));
 
         // If CUPS rendered the full page (including margins), crop by (m_lr, m_tb).
-        let crop_x = if src_w > dst_w {
-            (m_lr as usize).min(src_w - dst_w)
+        // When CUPS already rendered only the ImageableArea, src_w/src_h may exceed
+        // dst_w/dst_h by 1-2 px due to PostScript point rounding; do not shift by 1 px.
+        let crop_x = if src_w >= dst_w + (m_lr as usize) {
+            m_lr as usize
         } else {
             0
         };
-        let crop_y = if src_h > dst_h {
-            (m_tb as usize).min(src_h - dst_h)
+        let crop_y = if src_h >= dst_h + (m_tb as usize) {
+            m_tb as usize
         } else {
             0
         };
@@ -528,12 +530,12 @@ fn generate_test_strip_image(print_w: u32) -> RgbImage {
 
     for (idx, &(r, g, b)) in patches.iter().enumerate() {
         let x0 = x0_start + (idx as u32) * (patch_px + gap_px);
-        let x1 = (x0 + patch_px).min(print_w);
+        let x1 = (x0 + patch_px).min(print_w - 1);
         let y0 = top_pad;
         let y1 = top_pad + patch_px;
-        for y in y0..y1 {
-            for x in x0..x1 {
-                let is_border = x < x0 + 2 || x + 2 >= x1 || y < y0 + 2 || y + 2 >= y1;
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let is_border = x < x0 + 2 || x + 1 >= x1 || y < y0 + 2 || y + 1 >= y1;
                 if is_border {
                     img.put_pixel(x, y, Rgb([80, 80, 80]));
                 } else {
