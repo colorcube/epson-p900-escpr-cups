@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# install.sh - Build and install the epson-p900-escpr-cups driver into CUPS.
+# install.sh - Build and install the epson-p900-escpr-cups Rust driver into CUPS.
 #
 # Usage:
-#   sudo ./install.sh [PRINTER_IP]
+#   ./install.sh              # Build release binary and generate PPDs
+#   sudo ./install.sh [IP]    # Install into CUPS and optionally register queue
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -10,13 +11,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRINTER_IP="${1:-}"
+BIN_PATH="$SCRIPT_DIR/target/release/rastertop900escpr"
 
-echo "=== 1. Compiling RHV2 C accelerator (librhv2.so) ==="
-if command -v gcc >/dev/null 2>&1; then
-    gcc -O3 -shared -fPIC "$SCRIPT_DIR/src/rhv2.c" -o "$SCRIPT_DIR/src/librhv2.so"
-    echo "Compiled $SCRIPT_DIR/src/librhv2.so"
+echo "=== 1. Building Rust CUPS filter & CLI (rastertop900escpr) ==="
+if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
+    sudo -u "$SUDO_USER" bash -c "cd '$SCRIPT_DIR' && (cargo build --release --offline || cargo build --release)"
 else
-    echo "WARN: gcc not found; filter will use pure-Python RHV2 fallback."
+    (cd "$SCRIPT_DIR" && (cargo build --release --offline || cargo build --release))
 fi
 
 echo "=== 2. Checking Epson ICC profiles ==="
@@ -26,7 +27,7 @@ if ! ls "$SCRIPT_DIR/icc/"*.icc >/dev/null 2>&1; then
 fi
 
 echo "=== 3. Generating CUPS PPD files ==="
-python3 "$SCRIPT_DIR/scripts/generate_ppd.py"
+"$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
 
 if [[ $EUID -ne 0 ]]; then
     echo ""
@@ -34,21 +35,15 @@ if [[ $EUID -ne 0 ]]; then
     exit 0
 fi
 
-echo "=== 4. Installing filter, modules, PPDs, and ICC profiles ==="
-install -d /usr/share/epson-p900-escpr-cups/src
-install -m 644 "$SCRIPT_DIR/src/escpr_protocol.py"  /usr/share/epson-p900-escpr-cups/src/
-install -m 644 "$SCRIPT_DIR/src/icc_manager.py"     /usr/share/epson-p900-escpr-cups/src/
-install -m 644 "$SCRIPT_DIR/src/media_installer.py" /usr/share/epson-p900-escpr-cups/src/
-install -m 644 "$SCRIPT_DIR/src/rhv2.c"             /usr/share/epson-p900-escpr-cups/src/
-if [[ -f "$SCRIPT_DIR/src/librhv2.so" ]]; then
-    install -m 755 "$SCRIPT_DIR/src/librhv2.so"     /usr/share/epson-p900-escpr-cups/src/
-fi
+echo "=== 4. Installing filter binary, custom_media.json, PPDs, and ICC profiles ==="
+rm -rf /usr/share/epson-p900-escpr-cups/src
+install -d /usr/share/epson-p900-escpr-cups
 if [[ -f "$SCRIPT_DIR/custom_media.json" ]]; then
-    install -m 644 "$SCRIPT_DIR/custom_media.json"  /usr/share/epson-p900-escpr-cups/custom_media.json
+    install -m 644 "$SCRIPT_DIR/custom_media.json" /usr/share/epson-p900-escpr-cups/custom_media.json
 fi
 
 install -d /usr/lib/cups/filter
-install -m 755 "$SCRIPT_DIR/filter/rastertop900escpr" /usr/lib/cups/filter/rastertop900escpr
+install -m 755 "$BIN_PATH" /usr/lib/cups/filter/rastertop900escpr
 
 install -d /usr/share/cups/model/epson-p900-escpr
 install -m 644 "$SCRIPT_DIR/ppd/Epson-SC-P900-ESCPR.ppd" /usr/share/cups/model/epson-p900-escpr/
