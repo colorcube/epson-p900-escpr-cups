@@ -42,7 +42,9 @@ fi
 
 if [[ $EUID -ne 0 ]]; then
     echo ""
-    echo "Build complete. Run 'sudo ./install.sh [PRINTER_IP]' to install into /usr/lib/cups/filter and register the CUPS queue."
+    echo "Build complete."
+    echo "  - Install driver only (manual setup in KDE/GNOME/CUPS UI): sudo ./install.sh"
+    echo "  - Install driver AND create CUPS queue automatically:       sudo ./install.sh <PRINTER_IP>"
     exit 0
 fi
 
@@ -80,6 +82,11 @@ if [[ -n "$PRINTER_IP" ]]; then
         -P /usr/share/cups/model/epson-p900-escpr/Epson-SC-P900-ESCPR.ppd \
         -D "Epson SureColor SC-P900 (Official ICC + ESC/P-R Lv5)"
     echo "Registered CUPS printer 'Epson_SC_P900_ESCPR'."
+else
+    echo "Driver files installed into CUPS (no printer queue created)."
+    echo "You can now add the printer in KDE System Settings / GNOME / CUPS (http://localhost:631)"
+    echo "using connection 'socket://<PRINTER_IP>:9100' (AppSocket / HP JetDirect) or USB,"
+    echo "and driver 'EPSON SC-P900 Series - Official ICC + ESC/P-R Lv5'."
 fi
 
 echo "Installation finished successfully."

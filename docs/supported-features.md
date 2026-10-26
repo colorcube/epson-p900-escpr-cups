@@ -16,6 +16,14 @@ Legend: ✅ tested on hardware · 🟡 implemented, untested · ❌ not implemen
 | Epson SureColor SC-P900 | ✅ |
 | Epson SureColor SC-P700 | 🟡 same protocol and data family, never printed |
 
+## Connections
+
+| Status | Connection | URI Example | Notes |
+|---|---|---|---|
+| ✅ | Network (AppSocket / JetDirect) | `socket://<IP>:9100` | Recommended for network printing |
+| 🟡 | Network (LPD PASSTHRU) | `lpd://<IP>:515/PASSTHRU` | Discovered automatically in KDE/GNOME |
+| 🟡 | USB | `usb://EPSON/SC-P900%20Series?...` | Standard CUPS `usb` backend + IEEE 1284 Device ID; not yet tested on hardware |
+
 ## Media types
 
 Black ink (PK = Photo Black, MK = Matte Black) is chosen by the printer from the media type; the column shows the expected ink, which has only been confirmed where tested.

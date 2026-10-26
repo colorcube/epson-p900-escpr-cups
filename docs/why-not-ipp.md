@@ -80,7 +80,9 @@ Glossy, rear feeder, quality "High") was printed three ways:
 | Documents, plain paper, quick prints | IPP / driverless |
 | Photos where "very good" is enough | IPP works, differences are small |
 | Exhibition prints, matching a soft-proof, third-party papers with their own ICC profiles, Carbon Black / Overcoat | this driver |
-| Full control over ink separation and halftoning, own calibration | Gutenprint (work in progress) |
+| Direct per-nozzle ink separation (screen-printing films, UV contact negatives, third-party inksets) | Gutenprint (not supported for SC-P900; see [why-not-gutenprint.md](why-not-gutenprint.md)) |
 
 See also [resolution.md](resolution.md) for why 720 dpi RGB is enough even
-though the printer advertises 5760 × 1440 dpi.
+though the printer advertises 5760 × 1440 dpi, and
+[why-not-gutenprint.md](why-not-gutenprint.md) for why this driver uses
+`ESC/P-R Level 5` rather than low-level `ESC i` nozzle bitmaps.

@@ -29,12 +29,13 @@ difference (slightly lighter, less saturated colors) – details in
 |---|---|---|---|
 | Color management | printer firmware, sRGB / Adobe RGB | Epson ICC profile per paper on the computer (`liblcms2`) | own, on the computer |
 | Media / quality settings | 16 media types, 3 quality levels | all 18 Epson media types + 30 custom NVRAM slots, Carbon Black, Overcoat | own |
-| Typical use | documents, everyday photos | photo and fine-art printing like on Windows/macOS | full control over inks (SC-P900 support in progress) |
+| Typical use | documents, everyday photos | photo and fine-art printing like on Windows/macOS | direct per-nozzle control (SC-P900 not supported by Gutenprint) |
 
 Short version: for documents IPP is fine. For prints that should look like
 they came from the Epson driver, use this one. Why 720 dpi data is enough
 although the printer advertises 5760 × 1440 dpi is explained in
-[docs/resolution.md](docs/resolution.md).
+[docs/resolution.md](docs/resolution.md), and why `ESC/P-R` is used instead of
+Gutenprint is explained in [docs/why-not-gutenprint.md](docs/why-not-gutenprint.md).
 
 ## Companion Projects
 
@@ -43,7 +44,8 @@ although the printer advertises 5760 × 1440 dpi is explained in
   SNMP, importing/downloading `.emx` media packages, and writing
   `custom_media.json` for this CUPS driver.
 - **[`LumaPrint`](../LumaPrint)**: Rust/egui fine-art photo layout and soft-proofing
-  application with native `ESC/P-R Level 5` printing support.
+  application for Linux that works with any CUPS printer and automatically reads
+  the paper-to-ICC mappings from this driver's PPD.
 - *(Note: The original Python prototype of the driver and media installer is
   preserved on the `python-prototype` Git branch.)*
 
@@ -62,18 +64,29 @@ although the printer advertises 5760 × 1440 dpi is explained in
 #    (they may not be redistributed, so they are not part of this repository)
 ./icc/fetch_icc_profiles.sh
 
-# 2. Build the Rust release binary (target/release/rastertop900escpr) and generate PPDs
-./install.sh
+# 2. Option A: Install driver files into CUPS ONLY (without creating a queue)
+#    Use this if you want to add the printer manually via KDE / GNOME / CUPS UI:
+sudo ./install.sh
 
-# 3. Install into CUPS and create a queue for the printer at 192.0.2.10
+# 2. Option B: Install driver files AND register the CUPS queue automatically:
 sudo ./install.sh 192.0.2.10
 ```
 
 This installs the single compiled binary `/usr/lib/cups/filter/rastertop900escpr`,
 `custom_media.json` to `/usr/share/epson-p900-escpr-cups/`, the PPDs to
 `/usr/share/cups/model/epson-p900-escpr/`, and the ICC profiles to
-`/usr/share/color/icc/epson-scp900/`, and creates the queue
-`Epson_SC_P900_ESCPR`.
+`/usr/share/color/icc/epson-scp900/`.
+
+### Adding the printer manually in KDE / GNOME / CUPS Web UI (`http://localhost:631`)
+
+If you ran `sudo ./install.sh` without an IP address (or when connecting via USB):
+1. **Connection / Device URI:**
+   - **Network:** Choose **AppSocket / HP JetDirect** and enter `socket://<PRINTER_IP>:9100` (e.g. `socket://192.0.2.10:9100`), or select the discovered network printer (**LPD / PASSTHRU** `lpd://<PRINTER_IP>:515/PASSTHRU` also works).
+   - **USB:** Select the USB-connected **EPSON SC-P900 Series** (`usb://EPSON/SC-P900%20Series...`).
+   - *(Important: Do **not** select the `ipps://` / `dnssd://` "driverless" entry if you want to use this driver, as CUPS binds driverless URIs to its generic IPP Everywhere PPD.)*
+2. **Driver Selection:**
+   - Manufacturer: **EPSON**
+   - Model / Driver: **`EPSON SC-P900 Series - Official ICC + ESC/P-R Lv5`** (as opposed to `EPSON SC-P900 Series, driverless`).
 
 ## Usage
 

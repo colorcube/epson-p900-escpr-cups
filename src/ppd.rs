@@ -37,11 +37,11 @@ pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
     lines.push("*LanguageEncoding: ISOLatin1".to_string());
     lines.push(format!("*PCFileName: \"{pc_file}\""));
     lines.push("*Manufacturer: \"EPSON\"".to_string());
-    lines.push(format!("*Product: \"({model_name})\""));
-    lines.push(format!("*ModelName: \"EPSON {model_name}\""));
+    lines.push(format!("*Product: \"({short_model} Series)\""));
+    lines.push(format!("*ModelName: \"EPSON {short_model} Series\""));
     lines.push(format!("*ShortNickName: \"EPSON {short_model} (ESCPR+ICC)\""));
     lines.push(format!(
-        "*NickName: \"EPSON {model_name} - Official ICC + ESC/P-R Lv5\""
+        "*NickName: \"EPSON {model_name} Series - Official ICC + ESC/P-R Lv5\""
     ));
     lines.push("*PSVersion: \"(3010.000) 0\"".to_string());
     lines.push("*LanguageLevel: \"3\"".to_string());
@@ -59,7 +59,7 @@ pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
         "*cupsFilter: \"application/vnd.cups-raster 50 rastertop900escpr\"".to_string(),
     );
     lines.push(format!(
-        "*1284DeviceID: \"MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,END4;MDL:{short_model} Series;CLS:PRINTER;\""
+        "*1284DeviceID: \"MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP;MDL:{short_model} Series;CLS:PRINTER;DES:EPSON {short_model} Series;\""
     ));
     lines.push(String::new());
 
@@ -313,6 +313,20 @@ pub fn render_feature_table() -> String {
     l.push(format!("| Epson SureColor SC-P900 | {ok} |"));
     l.push(format!(
         "| Epson SureColor SC-P700 | {untested} same protocol and data family, never printed |"
+    ));
+    l.push(String::new());
+    l.push("## Connections".to_string());
+    l.push(String::new());
+    l.push("| Status | Connection | URI Example | Notes |".to_string());
+    l.push("|---|---|---|---|".to_string());
+    l.push(format!(
+        "| {ok} | Network (AppSocket / JetDirect) | `socket://<IP>:9100` | Recommended for network printing |"
+    ));
+    l.push(format!(
+        "| {untested} | Network (LPD PASSTHRU) | `lpd://<IP>:515/PASSTHRU` | Discovered automatically in KDE/GNOME |"
+    ));
+    l.push(format!(
+        "| {untested} | USB | `usb://EPSON/SC-P900%20Series?...` | Standard CUPS `usb` backend + IEEE 1284 Device ID; not yet tested on hardware |"
     ));
     l.push(String::new());
     l.push("## Media types".to_string());
