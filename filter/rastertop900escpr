@@ -41,6 +41,7 @@ from escpr_protocol import (
     encode_rgb_page_to_escpr,
     get_media_spec,
     get_paper_size,
+    get_slot_margins_720,
 )
 from icc_manager import apply_epson_icc_to_image
 
@@ -269,11 +270,11 @@ def render_pil_image_to_escpr(
     fit_to_page: bool = False,
 ) -> bytes:
     paper = get_paper_size(cfg.page_size, cfg.custom_w_720, cfg.custom_h_720)
-    margin = 0 if cfg.borderless else cfg.margin_720
+    margin_lr, margin_tb = get_slot_margins_720(cfg.input_slot, cfg.borderless, cfg.margin_720)
     # Ensure print_w is aligned to 8 pixels so hardware RHV2 stride == print_w
-    raw_print_w = paper.width_720 - 2 * margin
+    raw_print_w = paper.width_720 - 2 * margin_lr
     print_w = (raw_print_w // 8) * 8
-    print_h = paper.height_720 - 2 * margin
+    print_h = paper.height_720 - 2 * margin_tb
 
     # Place or scale image onto the 720 dpi printable canvas first
     if fit_to_page and (img.width != print_w or img.height != print_h):
@@ -470,8 +471,8 @@ def run_cli_mode(argv: List[str]) -> int:
     )
 
     paper = get_paper_size(cfg.page_size)
-    margin = 0 if cfg.borderless else cfg.margin_720
-    print_w = ((paper.width_720 - 2 * margin) // 8) * 8
+    margin_lr, margin_tb = get_slot_margins_720(cfg.input_slot, cfg.borderless, cfg.margin_720)
+    print_w = ((paper.width_720 - 2 * margin_lr) // 8) * 8
 
     if args.test_strip:
         img = build_small_test_strip_image(print_w)
@@ -499,9 +500,9 @@ def run_cli_mode(argv: List[str]) -> int:
             src = src.resize((target_w, target_h), Image.Resampling.LANCZOS)
             # Offsets are measured from the PAPER edge if --image-left-mm is given,
             # otherwise the image is centered; printable area starts at `margin`.
-            top_px = max(0, mm(args.image_top_mm) - (margin if args.from_paper_edge else 0))
+            top_px = max(0, mm(args.image_top_mm) - (margin_tb if args.from_paper_edge else 0))
             if args.image_left_mm is not None:
-                left_px = max(0, mm(args.image_left_mm) - (margin if args.from_paper_edge else 0))
+                left_px = max(0, mm(args.image_left_mm) - (margin_lr if args.from_paper_edge else 0))
             else:
                 left_px = (print_w - target_w) // 2
             img = Image.new("RGB", (print_w, top_px + target_h), (255, 255, 255))

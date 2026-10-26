@@ -46,10 +46,10 @@ Black ink (PK = Photo Black, MK = Matte Black) is chosen by the printer from the
 | Status | CUPS `InputSlot` | Name | Notes |
 |---|---|---|---|
 | ✅ | `Rear` | Sheet Feeder (Rear) |  |
-| 🟡 | `FrontFineArt` | Front - Fine Art / Thick Paper | uses a generic 3 mm margin; Epson uses feed-specific margins (to do) |
-| 🟡 | `FrontThick` | Front - Thick Paper | uses a generic 3 mm margin; Epson uses feed-specific margins (to do) |
-| 🟡 | `FrontPosterBoard` | Front - Poster Board (Straight Path) | uses a generic 3 mm margin; Epson uses feed-specific margins (to do) |
-| 🟡 | `FrontNoEjectRoller` | Front - Glossy (No Eject Roller) | uses a generic 3 mm margin; Epson uses feed-specific margins (to do) |
+| 🟡 | `FrontFineArt` | Front - Fine Art / Thick Paper | 3 mm margin on all 4 sides (per Epson PPD) |
+| 🟡 | `FrontThick` | Front - Thick Paper | 3 mm margin on all 4 sides (per Epson PPD) |
+| 🟡 | `FrontPosterBoard` | Front - Poster Board (Straight Path) | 3 mm left/right, 20 mm top/bottom margin (per Epson PPD) |
+| 🟡 | `FrontNoEjectRoller` | Front - Glossy (No Eject Roller) | 3 mm left/right, 20 mm top/bottom margin (per Epson PPD) |
 | 🟡 | `DiscTray` | CD/DVD Disc Tray |  |
 | 🟡/❌ | `Roll` | Roll Paper | feed path selected, but page length, cutting and cut lines are not implemented |
 

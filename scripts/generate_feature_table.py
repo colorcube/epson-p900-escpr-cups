@@ -93,8 +93,10 @@ def render() -> str:
         note = MISSING_NOTES.get(key, "")
         if note:
             status = f"{UNTESTED}/{MISSING}"
-        if key.startswith("Front") and not note:
-            note = "uses a generic 3 mm margin; Epson uses feed-specific margins (to do)"
+        elif key in ("FrontPosterBoard", "FrontNoEjectRoller"):
+            note = "3 mm left/right, 20 mm top/bottom margin (per Epson PPD)"
+        elif key.startswith("Front"):
+            note = "3 mm margin on all 4 sides (per Epson PPD)"
         a(f"| {status} | `{key}` | {name} | {note} |")
     a("")
     a("## Paper sizes")

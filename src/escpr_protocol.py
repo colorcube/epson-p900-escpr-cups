@@ -848,6 +848,21 @@ def build_remote1_hd_payload(
     return bytes(hd)
 
 
+def get_slot_margins_720(input_slot: str, borderless: bool, default_margin_720: int = 84) -> Tuple[int, int]:
+    """
+    Return (margin_left_right_720, margin_top_bottom_720) in 720 dpi pixels
+    according to Epson's official SC-P900 PPD ImageableArea table:
+    - Borderless: (0, 0)
+    - Rear / FrontFineArt / FrontThick / DiscTray: (84, 84) = (3.0 mm, 3.0 mm)
+    - FrontPosterBoard / FrontNoEjectRoller:       (84, 566) = (3.0 mm, 20.0 mm)
+    """
+    if borderless:
+        return (0, 0)
+    if input_slot in ("FrontPosterBoard", "FrontNoEjectRoller"):
+        return (default_margin_720, 566)
+    return (default_margin_720, default_margin_720)
+
+
 def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
     """
     Build the complete EJL + REMOTE1 + ESCPR initialization header.
@@ -995,13 +1010,13 @@ def build_job_header(cfg: EscprJobConfig, print_w: int, print_h: int) -> bytes:
         )
 
     # 7. ESC j setj (Job / page geometry, 22 bytes, 720 dpi units)
-    margin = 0 if cfg.borderless else cfg.margin_720
+    margin_lr, margin_tb = get_slot_margins_720(cfg.input_slot, cfg.borderless, cfg.margin_720)
     j_setj = struct.pack(
         ">IIhhIIBB",
         paper.width_720,
         paper.height_720,
-        margin,
-        margin,
+        margin_tb,
+        margin_lr,
         print_w,
         print_h,
         1,  # Input resolution = 1 (720 dpi)
