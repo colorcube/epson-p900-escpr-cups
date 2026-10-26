@@ -15,19 +15,30 @@ BIN_PATH="$SCRIPT_DIR/target/release/rastertop900escpr"
 
 echo "=== 1. Building Rust CUPS filter & CLI (rastertop900escpr) ==="
 if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
-    sudo -u "$SUDO_USER" bash -c "cd '$SCRIPT_DIR' && (cargo build --release --offline || cargo build --release)"
+    USER_HOME="$(getent passwd "$SUDO_USER" | cut -d: -f6)"
+    sudo -u "$SUDO_USER" env HOME="$USER_HOME" PATH="$USER_HOME/.cargo/bin:$PATH" \
+        bash -c "cd '$SCRIPT_DIR' && (cargo build --release --offline || cargo build --release)"
 else
+    export PATH="$HOME/.cargo/bin:$PATH"
     (cd "$SCRIPT_DIR" && (cargo build --release --offline || cargo build --release))
 fi
 
 echo "=== 2. Checking Epson ICC profiles ==="
 if ! ls "$SCRIPT_DIR/icc/"*.icc >/dev/null 2>&1; then
     echo "Extracting Epson ICC profiles via icc/fetch_icc_profiles.sh ..."
-    bash "$SCRIPT_DIR/icc/fetch_icc_profiles.sh"
+    if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
+        sudo -u "$SUDO_USER" bash "$SCRIPT_DIR/icc/fetch_icc_profiles.sh"
+    else
+        bash "$SCRIPT_DIR/icc/fetch_icc_profiles.sh"
+    fi
 fi
 
 echo "=== 3. Generating CUPS PPD files ==="
-"$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
+if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
+    sudo -u "$SUDO_USER" "$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
+else
+    "$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
+fi
 
 if [[ $EUID -ne 0 ]]; then
     echo ""
