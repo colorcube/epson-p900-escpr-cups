@@ -152,7 +152,7 @@ impl<R: Read> CupsPageStream<'_, R> {
                     out.extend_from_slice(&unit_buf);
                 }
             } else {
-                let count = (256 - n) * unit_size;
+                let count = (257 - n) * unit_size;
                 let start = out.len();
                 out.resize(start + count, 0);
                 reader.read_exact(&mut out[start..start + count])?;

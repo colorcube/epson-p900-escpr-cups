@@ -194,12 +194,13 @@ fn create_lcms_transform_if_needed(
 }
 
 /// Run in CUPS filter mode, streaming scanlines in 16-row bands without buffering
-/// the full page in memory.
+/// the uncompressed page in memory, while still generating the 272-px LCD preview
+/// thumbnail (`ESC t tsnd`).
 fn run_cups_filter(args: &[String]) -> i32 {
     let job_user = args.get(2).map_or("linux", String::as_str);
     let job_title = args.get(3).map_or("CUPS_Job", String::as_str);
-    let options_str = args.get(4).map_or("", String::as_str);
-    let raster_file = args.get(5);
+    let options_str = args.get(5).map_or("", String::as_str);
+    let raster_file = args.get(6);
 
     let opts = parse_cups_options(options_str);
     let (mut cfg, intent) = build_config_from_cups_opts(&opts, job_user, job_title);
@@ -219,7 +220,6 @@ fn run_cups_filter(args: &[String]) -> i32 {
 
     let mut cups_reader = CupsRasterReader::new(reader);
 
-    let xform = create_lcms_transform_if_needed(&cfg, &intent, None);
     let stdout = io::stdout();
     let mut out = BufWriter::with_capacity(256 * 1024, stdout.lock());
 
@@ -243,6 +243,8 @@ fn run_cups_filter(args: &[String]) -> i32 {
         cfg.custom_w_720 = hdr.width;
         cfg.custom_h_720 = hdr.height;
 
+        let xform = create_lcms_transform_if_needed(&cfg, &intent, None);
+
         let paper = get_paper_size(&cfg.page_size, hdr.width, hdr.height);
         let (margin_lr, margin_tb) =
             get_slot_margins_720(&cfg.input_slot, cfg.borderless, cfg.margin_720);
@@ -257,16 +259,15 @@ fn run_cups_filter(args: &[String]) -> i32 {
             cfg.media, cfg.input_slot, cfg.page_size, cfg.quality, cfg.color_mode
         );
 
-        let job_hdr = build_job_header(&cfg, print_w, print_h);
-        if let Err(e) = out.write_all(&job_hdr) {
-            eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
-            return 1;
-        }
-
         let src_w = hdr.width as usize;
         let src_h = hdr.height as usize;
         let dst_w = print_w as usize;
         let dst_h = print_h as usize;
+
+        // Prepare tiny 272-px rotated thumbnail buffer (~155 KB) filled on the fly
+        let thumb_w = 272u32;
+        let thumb_h = ((u64::from(print_w) * 272) / u64::from(print_h.max(1))).max(1) as u32;
+        let mut thumb_img = RgbImage::from_pixel(thumb_w, thumb_h, Rgb([255, 255, 255]));
 
         // If CUPS rendered the full page (including margins), crop by (m_lr, m_tb).
         let crop_x = if src_w > dst_w {
@@ -297,6 +298,7 @@ fn run_cups_filter(args: &[String]) -> i32 {
         // Queue of (iy_offset, lines) for consecutive all-white bands so trailing white
         // bands at the bottom of the page can be dropped without buffering pixel data.
         let mut pending_white_bands: Vec<(u32, usize)> = Vec::new();
+        let mut compressed_bands: Vec<Vec<u8>> = Vec::new();
 
         let mut iy = 0usize;
         while iy < dst_h {
@@ -316,6 +318,28 @@ fn run_cups_filter(args: &[String]) -> i32 {
                     let dst_slice = &mut band_buf[r * dst_w * 3..(r * dst_w + copy_px) * 3];
                     dst_slice.copy_from_slice(src_slice);
                 }
+
+                // Sample into the 272-px rotated thumbnail if this scanline maps to a thumbnail column
+                let cur_y = (iy + r) as u64;
+                let ty = ((cur_y * u64::from(thumb_w)) / u64::from(print_h.max(1)))
+                    .min(u64::from(thumb_w - 1)) as u32;
+                let prev_ty = if cur_y == 0 {
+                    u32::MAX
+                } else {
+                    (((cur_y - 1) * u64::from(thumb_w)) / u64::from(print_h.max(1)))
+                        .min(u64::from(thumb_w - 1)) as u32
+                };
+                if ty != prev_ty {
+                    let row_slice = &band_buf[r * dst_w * 3..(r + 1) * dst_w * 3];
+                    for tx in 0..thumb_h {
+                        let sx = ((u64::from(tx) * u64::from(print_w)) / u64::from(thumb_h))
+                            .min(u64::from(print_w.saturating_sub(1)))
+                            as usize;
+                        let off = sx * 3;
+                        let p = Rgb([row_slice[off], row_slice[off + 1], row_slice[off + 2]]);
+                        thumb_img.put_pixel(ty, thumb_h - 1 - tx, p);
+                    }
+                }
             }
 
             let is_all_white = band_buf[..active_len].iter().all(|&b| b == 255);
@@ -324,26 +348,24 @@ fn run_cups_filter(args: &[String]) -> i32 {
             } else {
                 // Flush any preceding interior white bands first
                 for (w_iy, w_lines) in pending_white_bands.drain(..) {
-                    let pkt = make_bsn2_packet(
+                    compressed_bands.push(make_bsn2_packet(
                         &white_band_buf[..dst_w * w_lines * 3],
                         dst_w,
                         w_lines,
                         w_iy,
                         0,
-                    );
-                    if let Err(e) = out.write_all(&pkt) {
-                        eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
-                        return 1;
-                    }
+                    ));
                 }
                 if let Some(ref xf) = xform {
                     xf.transform_rgb8_in_place(&mut band_buf[..active_len]);
                 }
-                let pkt = make_bsn2_packet(&band_buf[..active_len], dst_w, lines, iy as u32, 0);
-                if let Err(e) = out.write_all(&pkt) {
-                    eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
-                    return 1;
-                }
+                compressed_bands.push(make_bsn2_packet(
+                    &band_buf[..active_len],
+                    dst_w,
+                    lines,
+                    iy as u32,
+                    0,
+                ));
             }
 
             iy += lines;
@@ -355,6 +377,38 @@ fn run_cups_filter(args: &[String]) -> i32 {
                 break;
             }
             src_rows_consumed += 1;
+        }
+
+        // Write Job Header + ESC t tsnd Preview + Compressed bsn2 Bands + Footer
+        let job_hdr = build_job_header(&cfg, print_w, print_h);
+        if let Err(e) = out.write_all(&job_hdr) {
+            eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
+            return 1;
+        }
+
+        let mut jpeg_buf = Vec::with_capacity(16384);
+        let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 85);
+        if enc
+            .encode(
+                thumb_img.as_raw(),
+                thumb_img.width(),
+                thumb_img.height(),
+                image::ExtendedColorType::Rgb8,
+            )
+            .is_ok()
+        {
+            let tsnd = make_tsnd_packet(&jpeg_buf);
+            if let Err(e) = out.write_all(&tsnd) {
+                eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
+                return 1;
+            }
+        }
+
+        for pkt in &compressed_bands {
+            if let Err(e) = out.write_all(pkt) {
+                eprintln!("ERROR: [rastertop900escpr] stdout write error: {e}");
+                return 1;
+            }
         }
 
         if let Err(e) = out.write_all(&build_job_footer()) {
