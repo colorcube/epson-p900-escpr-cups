@@ -81,12 +81,12 @@ This installs the single compiled binary `/usr/lib/cups/filter/rastertop900escpr
 
 If you ran `sudo ./install.sh` without an IP address (or when connecting via USB):
 1. **Connection / Device URI:**
-   - **Network:** Choose **AppSocket / HP JetDirect** and enter `socket://<PRINTER_IP>:9100` (e.g. `socket://192.0.2.10:9100`), or select the discovered network printer (**LPD / PASSTHRU** `lpd://<PRINTER_IP>:515/PASSTHRU` also works).
+   - **Network (Auto-Discovered or Manual):** Select the discovered **EPSON SC-P900 Series** (`dnssd://EPSON%20SC-P900%20Series._ipp._tcp.local/?uuid=...` or `lpd://.../PASSTHRU`), or choose **AppSocket / HP JetDirect** and enter `socket://<PRINTER_IP>:9100` (e.g. `socket://192.0.2.10:9100`).
    - **USB:** Select the USB-connected **EPSON SC-P900 Series** (`usb://EPSON/SC-P900%20Series...`).
-   - *(Important: Do **not** select the `ipps://` / `dnssd://` "driverless" entry if you want to use this driver, as CUPS binds driverless URIs to its generic IPP Everywhere PPD.)*
 2. **Driver Selection:**
-   - Manufacturer: **EPSON**
-   - Model / Driver: **`EPSON SC-P900 Series - Official ICC + ESC/P-R Lv5`** (as opposed to `EPSON SC-P900 Series, driverless`).
+   - **Recommended Drivers screen (KDE / system-config-printer):** Select the ★ **`PPD-Datei` (`epson-p900-escpr/Epson-SC-P900-ESCPR.ppd`)** entry (as opposed to `Treiberloses Drucken` / `driverless`).
+   - **Manual Driver Search (`Manuelle Treibersuche…`):** Under Manufacturer **EPSON**, our driver **`EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5`** is automatically pre-selected.
+   - *(Note: If KDE System Settings was already open while running `sudo ./install.sh`, close and reopen System Settings so it reloads the CUPS PPD list.)*
 
 ## Usage
 

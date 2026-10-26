@@ -19,7 +19,7 @@ fn ppd_safe_text(text: &str) -> String {
     ascii
 }
 
-pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
+pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
     let short_model = if is_p900 { "SC-P900" } else { "SC-P700" };
     let file_name = format!("Epson-{short_model}-ESCPR.ppd");
     let pc_file = &file_name[..file_name.len().min(12)];
@@ -41,7 +41,7 @@ pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
     lines.push(format!("*ModelName: \"EPSON {short_model} Series\""));
     lines.push(format!("*ShortNickName: \"EPSON {short_model} (ESCPR+ICC)\""));
     lines.push(format!(
-        "*NickName: \"EPSON {model_name} Series - Official ICC + ESC/P-R Lv5\""
+        "*NickName: \"EPSON {short_model} Series (SureColor) - Official ICC + ESC/P-R Lv5\""
     ));
     lines.push("*PSVersion: \"(3010.000) 0\"".to_string());
     lines.push("*LanguageLevel: \"3\"".to_string());
@@ -59,7 +59,7 @@ pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
         "*cupsFilter: \"application/vnd.cups-raster 50 rastertop900escpr\"".to_string(),
     );
     lines.push(format!(
-        "*1284DeviceID: \"MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP;MDL:{short_model} Series;CLS:PRINTER;DES:EPSON {short_model} Series;\""
+        "*1284DeviceID: \"MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP,URF,PWG;MDL:{short_model} Series;CLS:PRINTER;DES:EPSON {short_model} Series;\""
     ));
     lines.push(String::new());
 

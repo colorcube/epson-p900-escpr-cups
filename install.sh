@@ -75,6 +75,10 @@ if command -v restorecon >/dev/null 2>&1; then
         /usr/share/color/icc/epson-scp900 >/dev/null 2>&1 || true
 fi
 
+# Invalidate CUPS PPD cache and D-Bus driver matcher cache so GUIs see updated PPDs immediately
+rm -f /var/cache/cups/ppds.dat 2>/dev/null || true
+pkill -f scp-dbus-service.py 2>/dev/null || true
+
 if [[ -n "$PRINTER_IP" ]]; then
     echo "=== 5. Registering CUPS queue 'Epson_SC_P900_ESCPR' at socket://${PRINTER_IP}:9100 ==="
     lpadmin -p Epson_SC_P900_ESCPR -E \
@@ -84,9 +88,9 @@ if [[ -n "$PRINTER_IP" ]]; then
     echo "Registered CUPS printer 'Epson_SC_P900_ESCPR'."
 else
     echo "Driver files installed into CUPS (no printer queue created)."
+    echo "Note: Close and reopen KDE System Settings (systemsettings) so its cached PPD list reloads."
     echo "You can now add the printer in KDE System Settings / GNOME / CUPS (http://localhost:631)"
-    echo "using connection 'socket://<PRINTER_IP>:9100' (AppSocket / HP JetDirect) or USB,"
-    echo "and driver 'EPSON SC-P900 Series - Official ICC + ESC/P-R Lv5'."
+    echo "and select 'EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5'."
 fi
 
 echo "Installation finished successfully."

@@ -8,7 +8,7 @@
 *Product: "(SC-P900 Series)"
 *ModelName: "EPSON SC-P900 Series"
 *ShortNickName: "EPSON SC-P900 (ESCPR+ICC)"
-*NickName: "EPSON SureColor SC-P900 Series - Official ICC + ESC/P-R Lv5"
+*NickName: "EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5"
 *PSVersion: "(3010.000) 0"
 *LanguageLevel: "3"
 *ColorDevice: True
@@ -22,7 +22,7 @@
 *cupsModelNumber: 1
 *cupsManualCopies: False
 *cupsFilter: "application/vnd.cups-raster 50 rastertop900escpr"
-*1284DeviceID: "MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP;MDL:SC-P900 Series;CLS:PRINTER;DES:EPSON SC-P900 Series;"
+*1284DeviceID: "MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP,URF,PWG;MDL:SC-P900 Series;CLS:PRINTER;DES:EPSON SC-P900 Series;"
 
 *%cupsICCProfile RGB.PremiumGlossy./Epson Premium Glossy Photo Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_EpsonPremiumGlossy.icc"
 *%cupsICCProfile RGB.PremiumSemigloss./Epson Premium Semigloss Photo Paper: "/usr/share/color/icc/epson-scp900/Epson_SC-P900_700_EpsonPremiumSemigloss.icc"
