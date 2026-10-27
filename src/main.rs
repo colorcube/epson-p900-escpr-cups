@@ -65,6 +65,34 @@ fn parse_bool(val: &str) -> bool {
     )
 }
 
+fn normalize_quality_token(raw: &str) -> Option<&'static str> {
+    match raw.trim().to_ascii_lowercase().as_str() {
+        "normal" | "draft" | "360dpi" | "360x360dpi" | "720x360dpi" | "720dpi"
+        | "720x720dpi" | "3" => Some("Normal"),
+        "fine" | "superfine" | "720x1440dpi" | "1440x720dpi" | "4" => Some("Fine"),
+        "high" | "photo" | "1440dpi" | "1440x1440dpi" | "5" => Some("High"),
+        "max" | "superphoto" | "2880x1440dpi" => Some("Max"),
+        "carbonblack" | "ultra" | "5760dpi" | "5760x1440dpi" | "carbonblack5760x1440" => {
+            Some("CarbonBlack")
+        }
+        _ => None,
+    }
+}
+
+fn resolve_quality_from_cups_opts(opts: &HashMap<String, String>) -> String {
+    for key in ["PrintQuality", "Resolution", "print-quality"] {
+        if let Some(val) = opts.get(key) {
+            if let Some(norm) = normalize_quality_token(val) {
+                return norm.to_string();
+            }
+            if key == "PrintQuality" && !val.trim().is_empty() {
+                return val.clone();
+            }
+        }
+    }
+    "High".to_string()
+}
+
 fn build_config_from_cups_opts(
     opts: &HashMap<String, String>,
     job_user: &str,
@@ -84,10 +112,7 @@ fn build_config_from_cups_opts(
         .or_else(|| opts.get("media"))
         .cloned()
         .unwrap_or_else(|| "A4".to_string());
-    let quality = opts
-        .get("PrintQuality")
-        .cloned()
-        .unwrap_or_else(|| "High".to_string());
+    let quality = resolve_quality_from_cups_opts(opts);
     let cm_calib = opts.get("cm-calibration").is_some_and(|v| parse_bool(v));
     let raw_color_mode = opts.get("EpsonColorMode").or_else(|| opts.get("ColorMode"));
     let color_mode = match raw_color_mode {
@@ -995,3 +1020,36 @@ fn main() {
     };
     std::process::exit(code);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resolve_quality_from_cups_opts() {
+        let cases = [
+            ("PrintQuality=CarbonBlack", "CarbonBlack"),
+            ("PrintQuality=Max Resolution=720dpi", "Max"),
+            ("Resolution=360dpi", "Normal"),
+            ("Resolution=720dpi", "Normal"),
+            ("Resolution=720x720dpi", "Normal"),
+            ("Resolution=1440x720dpi", "Fine"),
+            ("Resolution=1440x1440dpi", "High"),
+            ("Resolution=2880x1440dpi", "Max"),
+            ("Resolution=5760x1440dpi", "CarbonBlack"),
+            ("print-quality=3", "Normal"),
+            ("print-quality=4", "Fine"),
+            ("print-quality=5", "High"),
+            ("MediaType=PhotoPaperGlossy", "High"),
+        ];
+        for (opt_str, expected) in cases {
+            let opts = parse_cups_options(opt_str);
+            let (cfg, _) = build_config_from_cups_opts(&opts, "user", "job");
+            assert_eq!(
+                cfg.quality, expected,
+                "failed for CUPS options '{opt_str}'"
+            );
+        }
+    }
+}
+
