@@ -41,7 +41,7 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
     lines.push(format!("*ModelName: \"EPSON {short_model} Series\""));
     lines.push(format!("*ShortNickName: \"EPSON {short_model} (ESCPR+ICC)\""));
     lines.push(format!(
-        "*NickName: \"EPSON {short_model} Series (SureColor) - Official ICC + ESC/P-R Lv5\""
+        "*NickName: \"EPSON {short_model} Series (SureColor) - Official ICC + ESC/P-R Lv5 (high quality)\""
     ));
     lines.push("*PSVersion: \"(3010.000) 0\"".to_string());
     lines.push("*LanguageLevel: \"3\"".to_string());
