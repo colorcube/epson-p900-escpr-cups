@@ -919,6 +919,7 @@ fn build_remote1_hd_payload(
     media: &MediaSpec,
     paper: &PaperSizeSpec,
     q_val: u8,
+    overcoat_val: u8,
     color_byte: u8,
     lut_byte: u8,
 ) -> Vec<u8> {
@@ -964,6 +965,8 @@ fn build_remote1_hd_payload(
         "EPSON Standard (sRGB)"
     };
 
+    let overcoat_on = overcoat_val == 2;
+
     let mut hd = vec![0x00, 0x05, 0x01, 0x02, 0x07, 0x04];
     let job_title = if cfg.job_name.is_empty() {
         "Linux_ESCPR_Job"
@@ -977,8 +980,8 @@ fn build_remote1_hd_payload(
     hd.extend_from_slice(&tlv_str(0x05, Some(q_val), q_label));
     hd.extend_from_slice(&tlv_str(
         0x06,
-        Some(if cfg.unidirectional { 0 } else { 1 }),
-        if cfg.unidirectional { "Off" } else { "On" },
+        Some(if overcoat_on { 1 } else { 0 }),
+        if overcoat_on { "On" } else { "Off" },
     ));
     hd.extend_from_slice(&tlv_str(0x07, Some(lut_byte), lut_str));
     hd.extend_from_slice(&tlv_str(0x08, Some(1), "2.2"));
@@ -1050,7 +1053,15 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
     .take(31)
     .collect();
 
-    let hd_payload = build_remote1_hd_payload(cfg, &media, &paper, q_val, color_byte, lut_byte);
+    let hd_payload = build_remote1_hd_payload(
+        cfg,
+        &media,
+        &paper,
+        q_val,
+        overcoat_val,
+        color_byte,
+        lut_byte,
+    );
 
     let mut out = Vec::with_capacity(1024);
     // 1a. EJL + REMOTE1 Job Initialization
