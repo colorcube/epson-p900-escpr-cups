@@ -11,6 +11,9 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PRINTER_IP="${1:-}"
+if [[ "$PRINTER_IP" == "--driver-only" || "$PRINTER_IP" == -* ]]; then
+    PRINTER_IP=""
+fi
 BIN_PATH="$SCRIPT_DIR/target/release/rastertop900escpr"
 
 echo "=== 1. Building Rust CUPS filter & CLI (rastertop900escpr) ==="
