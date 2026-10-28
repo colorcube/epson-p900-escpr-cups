@@ -71,7 +71,7 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
             "Epson_SC-P900_700_EpsonPremiumGlossy.icc",
             "EE2NE_04.ICC",
             false,
-            2,
+            1,
             true,
         ),
         MediaSpec::builtin(
@@ -82,7 +82,7 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
             "Epson_SC-P900_700_EpsonPremiumSemigloss.icc",
             "EE2NE_05.ICC",
             false,
-            2,
+            1,
             true,
         ),
         MediaSpec::builtin(
@@ -93,7 +93,7 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
             "Epson_SC-P900_700_PremiumLusterPhotoPaper.icc",
             "EE2NE_08.ICC",
             false,
-            2,
+            1,
             true,
         ),
         MediaSpec::builtin(
@@ -104,7 +104,7 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
             "Epson_SC-P900_700_PhotoPaperGlossy.icc",
             "EE2NE_07.ICC",
             false,
-            2,
+            1,
             true,
         ),
         MediaSpec::builtin(
@@ -115,7 +115,7 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
             "Epson_SC-P900_700_Baryta.icc",
             "EE2NE_01.ICC",
             false,
-            2,
+            1,
             true,
         ),
         MediaSpec::builtin(
@@ -956,6 +956,8 @@ fn build_remote1_hd_payload(
     };
     let lut_str = if lut_byte == 4 {
         "Off (No Color Adjustment)"
+    } else if lut_byte == 6 {
+        "Adobe RGB"
     } else if lut_byte == 7 {
         "Advanced B&W Photo"
     } else {
@@ -1015,7 +1017,13 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
 
     let (color_byte, lut_byte) = if cfg.color_mode.eq_ignore_ascii_case("advancedbw") {
         (3u8, 7u8)
-    } else if cfg.color_mode.eq_ignore_ascii_case("epsonstandard") {
+    } else if cfg.color_mode.eq_ignore_ascii_case("epsonadobergb")
+        || cfg.color_mode.eq_ignore_ascii_case("adobergb")
+    {
+        (0u8, 6u8)
+    } else if cfg.color_mode.eq_ignore_ascii_case("epsonstandard")
+        || cfg.color_mode.eq_ignore_ascii_case("srgb")
+    {
         (0u8, 0u8)
     } else {
         (0u8, 4u8)

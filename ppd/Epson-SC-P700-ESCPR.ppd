@@ -169,6 +169,7 @@
 *DefaultEpsonColorMode: EpsonICC
 *EpsonColorMode EpsonICC/Epson Official ICC Profile (Windows and macOS Quality): ""
 *EpsonColorMode NoColorAdjustment/No Color Adjustment (Application Managed): ""
+*EpsonColorMode EpsonAdobeRGB/Printer Internal Adobe RGB (Epson Print Layout Mode): ""
 *EpsonColorMode EpsonStandard/Printer Internal sRGB (Epson Standard LUT): ""
 *EpsonColorMode AdvancedBW/Advanced Black and White Photo: ""
 *CloseUI: *EpsonColorMode
@@ -185,8 +186,8 @@
 
 *OpenUI *EpsonOverCoat/Black Enhance Overcoat (BEO): PickOne
 *OrderDependency: 45 AnySetup *EpsonOverCoat
-*DefaultEpsonOverCoat: Auto
-*EpsonOverCoat Auto/Auto (Enabled on Glossy, Luster, Baryta): ""
+*DefaultEpsonOverCoat: Off
+*EpsonOverCoat Auto/Auto (Media Default): ""
 *EpsonOverCoat On/On: ""
 *EpsonOverCoat Off/Off: ""
 *CloseUI: *EpsonOverCoat
