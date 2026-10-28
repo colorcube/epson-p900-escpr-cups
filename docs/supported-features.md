@@ -34,7 +34,7 @@ Black ink (PK = Photo Black, MK = Matte Black) is chosen by the printer from the
 | 🟡 | `PremiumSemigloss` | Epson Premium Semigloss Photo Paper | 12 | PK | `Epson_SC-P900_700_EpsonPremiumSemigloss.icc` | yes |
 | 🟡 | `PremiumLuster` | Epson Premium Luster Photo Paper | 13 | PK | `Epson_SC-P900_700_PremiumLusterPhotoPaper.icc` | yes |
 | ✅ | `PhotoPaperGlossy` | Epson Photo Paper Glossy | 52 | PK | `Epson_SC-P900_700_PhotoPaperGlossy.icc` | yes |
-| 🟡 | `Baryta` | Epson Baryta / Traditional Photo Paper | 174 | PK | `Epson_SC-P900_700_Baryta.icc` | yes |
+| ✅ | `Baryta` | Epson Baryta / Traditional Photo Paper | 174 | PK | `Epson_SC-P900_700_Baryta.icc` | yes |
 | 🟡 | `VelvetFineArt` | Epson Velvet Fine Art Paper | 25 | MK | `Epson_SC-P900_700_VelvetFineArtPaper.icc` | – |
 | 🟡 | `UltraSmoothFineArt` | Epson UltraSmooth Fine Art Paper | 39 | MK | `Epson_SC-P900_700_UltraSmoothFineArtPaper.icc` | – |
 | 🟡 | `WatercolorRadiantWhite` | Epson Watercolor Paper - Radiant White | 16 | MK | `Epson_SC-P900_700_WatercolorPaperRadiantWhite.icc` | – |
@@ -101,8 +101,9 @@ requested level to the nearest allowed one (table from Epson's driver data).
 | Status | CUPS `EpsonColorMode` | Description |
 |---|---|---|
 | ✅ | `EpsonICC` | Convert on the host with the Epson ICC profile for the selected paper; printer color adjustment off |
-| 🟡 | `NoColorAdjustment` | Send RGB unchanged, printer color adjustment off (for your own profiles / profiling targets) |
-| 🟡 | `EpsonStandard` | Let the printer firmware apply its own sRGB conversion |
+| ✅ | `NoColorAdjustment` | Send RGB unchanged, printer color adjustment off (for your own profiles / profiling targets) |
+| ✅ | `EpsonAdobeRGB` | Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode) |
+| 🟡 | `EpsonStandard` | Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`) |
 | 🟡 | `AdvancedBW` | Epson Advanced Black & White Photo mode |
 
 Source color spaces: the embedded ICC profile of the input image is honoured (sRGB ✅, Adobe RGB ✅); images without a profile are treated as sRGB.
@@ -114,7 +115,7 @@ Rendering intents (`EpsonRenderingIntent`): `RelativeBPC` (default, ✅), `Relat
 | Status | Option | Notes |
 |---|---|---|
 | ✅ | LCD preview thumbnail & job metadata (`ESC t tsnd` + `REMOTE1 HD`) | 272-px baseline JPEG + TLV settings |
-| 🟡 | Black Enhance Overcoat (`EpsonOverCoat`) | on by default for glossy media |
+| ✅ | Black Enhance Overcoat (`EpsonOverCoat`) | off by default; selectable for glossy/luster/baryta media |
 | 🟡 | Unidirectional printing (`Unidirectional`) | |
 | 🟡 | Custom media (`custom_media.json`, `ESC q setl`, `ESC m seti`, `PrintDuty`, `DryingTime`) | NVRAM slot ID + on-the-fly parameters |
 | 🟡/❌ | Borderless (`Borderless`) | flag is sent, but the image is not enlarged beyond the edge like Epson's "Auto Expand" |
