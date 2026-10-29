@@ -1,8 +1,9 @@
 //! LittleCMS2 (`liblcms2`) FFI wrapper and ICC profile locator for the
 //! Epson SureColor SC-P900 and SC-P700.
 //!
-//! Uses the exact same `liblcms2.so.2` color engine (`Relative Colorimetric + BPC`
-//! with `cmsFLAGS_HIGHRESPRECALC`) verified on hardware against Epson Print Layout.
+//! Uses `liblcms2` with its default precalculation (no `cmsFLAGS_HIGHRESPRECALC`): this
+//! reproduces Epson Print Layout's ICC mode bit-exactly (verified against EPL captures for
+//! Perceptual + BPC and Relative Colorimetric + BPC on Photo Paper Glossy and Velvet Fine Art).
 //!
 //! SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -18,7 +19,6 @@ const INTENT_RELATIVE_COLORIMETRIC: u32 = 1;
 const INTENT_SATURATION: u32 = 2;
 const INTENT_ABSOLUTE_COLORIMETRIC: u32 = 3;
 
-const CMS_FLAGS_HIGHRESPRECALC: u32 = 0x0400;
 const CMS_FLAGS_BLACKPOINTCOMPENSATION: u32 = 0x2000;
 
 #[link(name = "lcms2")]
@@ -152,20 +152,15 @@ pub fn find_icc_profile(media: &MediaSpec) -> Option<PathBuf> {
 pub fn resolve_intent_and_flags(rendering_intent: &str) -> (u32, u32) {
     let ri = rendering_intent.trim().to_ascii_lowercase();
     match ri.as_str() {
-        "perceptual" | "0" => (
-            INTENT_PERCEPTUAL,
-            CMS_FLAGS_BLACKPOINTCOMPENSATION | CMS_FLAGS_HIGHRESPRECALC,
-        ),
+        "perceptual" | "0" => (INTENT_PERCEPTUAL, CMS_FLAGS_BLACKPOINTCOMPENSATION),
         "relative" | "relativenobpc" | "relativecolorimetricnobpc" => {
-            (INTENT_RELATIVE_COLORIMETRIC, CMS_FLAGS_HIGHRESPRECALC)
+            (INTENT_RELATIVE_COLORIMETRIC, 0)
         }
-        "saturation" | "2" => (INTENT_SATURATION, CMS_FLAGS_HIGHRESPRECALC),
-        "absolute" | "absolutecolorimetric" | "3" => {
-            (INTENT_ABSOLUTE_COLORIMETRIC, CMS_FLAGS_HIGHRESPRECALC)
-        }
+        "saturation" | "2" => (INTENT_SATURATION, 0),
+        "absolute" | "absolutecolorimetric" | "3" => (INTENT_ABSOLUTE_COLORIMETRIC, 0),
         _ => (
             INTENT_RELATIVE_COLORIMETRIC,
-            CMS_FLAGS_BLACKPOINTCOMPENSATION | CMS_FLAGS_HIGHRESPRECALC,
+            CMS_FLAGS_BLACKPOINTCOMPENSATION,
         ),
     }
 }
@@ -311,7 +306,7 @@ impl LcmsTransform {
                 dst_prof,
                 TYPE_RGB_8,
                 INTENT_RELATIVE_COLORIMETRIC,
-                CMS_FLAGS_BLACKPOINTCOMPENSATION | CMS_FLAGS_HIGHRESPRECALC,
+                CMS_FLAGS_BLACKPOINTCOMPENSATION,
             );
             cmsCloseProfile(src_prof);
             cmsCloseProfile(dst_prof);

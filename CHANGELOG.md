@@ -7,6 +7,7 @@
 - CUPS filter behavior is unchanged: the raster carries no source profile, so `EpsonAdobeRGB` / `EpsonStandard` expect data already in that color space (LumaPrint converts itself). The PPD labels now say so: `Printer Internal Adobe RGB (Input Must Be Adobe RGB)`, `Printer Internal sRGB (Input Must Be sRGB)`.
 
 ### Fixed
+- ICC mode (`EpsonICC`) now uses LittleCMS's default precalculation instead of `cmsFLAGS_HIGHRESPRECALC`, which reproduces Epson Print Layout bit-exactly: Perceptual + BPC and Relative Colorimetric + BPC on Photo Paper Glossy and Velvet Fine Art match the EPL captures on all 256 chart patches (previously up to 2–3 levels off on a few patches). EPL applies BPC to Perceptual as well (Velvet: up to 39 levels difference with/without), so Perceptual keeps BPC.
 - CUPS filter: rasters with a resolution other than 720 × 720 dpi or with unsupported bits per pixel (e.g. 48 bpp / 16-bit RGB) now fail the job with a clear `InvalidData` error instead of printing at the wrong size or as a blank white page (`HWResolution` is read from header fields 5/6, bytes 276–283).
 - Corrected the memory claim (`< 2 MB` peak RAM) in README and source docs: the uncompressed page is never held in memory, but the `RHV2`-compressed bands of one page are buffered because the `ESC t tsnd` preview must precede them; their size depends on the image.
 
