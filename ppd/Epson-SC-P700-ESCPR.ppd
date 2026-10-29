@@ -169,8 +169,8 @@
 *DefaultEpsonColorMode: EpsonICC
 *EpsonColorMode EpsonICC/Epson Official ICC Profile (Windows and macOS Quality): ""
 *EpsonColorMode NoColorAdjustment/No Color Adjustment (Application Managed): ""
-*EpsonColorMode EpsonAdobeRGB/Printer Internal Adobe RGB (Epson Print Layout Mode): ""
-*EpsonColorMode EpsonStandard/Printer Internal sRGB (Epson Standard LUT): ""
+*EpsonColorMode EpsonAdobeRGB/Printer Internal Adobe RGB (Input Must Be Adobe RGB): ""
+*EpsonColorMode EpsonStandard/Printer Internal sRGB (Input Must Be sRGB): ""
 *EpsonColorMode AdvancedBW/Advanced Black and White Photo: ""
 *CloseUI: *EpsonColorMode
 

@@ -177,8 +177,8 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
             "*DefaultEpsonColorMode: EpsonICC",
             "*EpsonColorMode EpsonICC/Epson Official ICC Profile (Windows and macOS Quality): \"\"",
             "*EpsonColorMode NoColorAdjustment/No Color Adjustment (Application Managed): \"\"",
-            "*EpsonColorMode EpsonAdobeRGB/Printer Internal Adobe RGB (Epson Print Layout Mode): \"\"",
-            "*EpsonColorMode EpsonStandard/Printer Internal sRGB (Epson Standard LUT): \"\"",
+            "*EpsonColorMode EpsonAdobeRGB/Printer Internal Adobe RGB (Input Must Be Adobe RGB): \"\"",
+            "*EpsonColorMode EpsonStandard/Printer Internal sRGB (Input Must Be sRGB): \"\"",
             "*EpsonColorMode AdvancedBW/Advanced Black and White Photo: \"\"",
             "*CloseUI: *EpsonColorMode",
             "",
@@ -423,11 +423,11 @@ pub fn render_feature_table() -> String {
         ),
         (
             "EpsonAdobeRGB",
-            "Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode)",
+            "Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode). CUPS: the data must already be Adobe RGB (no conversion in the filter, e.g. LumaPrint converts); CLI `--image`: converted from the embedded profile (sRGB if none) to Adobe RGB",
         ),
         (
             "EpsonStandard",
-            "Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`)",
+            "Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`). CUPS: the data must be sRGB; CLI `--image`: converted from the embedded profile to sRGB",
         ),
         ("AdvancedBW", "Epson Advanced Black & White Photo mode"),
     ] {

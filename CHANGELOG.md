@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+- Standalone CLI (`--image`): `EpsonAdobeRGB` and `EpsonStandard` now convert the image from its embedded ICC profile (sRGB if none) into the color space the printer LUT expects (Adobe RGB / sRGB), like Epson Print Layout does in "Auto" mode. Identity conversions are skipped so already matching data passes through bit-exact. Verified against the EPL reference captures (sRGB chart in Adobe RGB mode: mean deviation 0.52, Adobe RGB chart: identical).
+- CUPS filter behavior is unchanged: the raster carries no source profile, so `EpsonAdobeRGB` / `EpsonStandard` expect data already in that color space (LumaPrint converts itself). The PPD labels now say so: `Printer Internal Adobe RGB (Input Must Be Adobe RGB)`, `Printer Internal sRGB (Input Must Be sRGB)`.
+
+### Fixed
+- Corrected the memory claim (`< 2 MB` peak RAM) in README and source docs: the uncompressed page is never held in memory, but the `RHV2`-compressed bands of one page are buffered because the `ESC t tsnd` preview must precede them; their size depends on the image.
+
 ## 0.2.0 – 2026-10-26 (beta)
 
 Full native **Rust** port (`rastertop900escpr`) on `main`, verified end-to-end on SC-P900 hardware.

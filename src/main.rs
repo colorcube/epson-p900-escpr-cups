@@ -4,7 +4,9 @@
 //! Modes of operation:
 //! 1. **CUPS filter mode** (`argc == 6 || argc == 7`):
 //!    `rastertop900escpr job-id user title copies options [file]`
-//!    Streams CUPS Raster v2/v3 pages in 16-row bands with < 2 MB peak RAM,
+//!    Streams CUPS Raster v2/v3 pages in 16-row bands without holding the uncompressed page
+//!    in memory (only the `RHV2`-compressed bands of one page are buffered, because the
+//!    `ESC t tsnd` preview must precede them),
 //!    applies LittleCMS2 ICC color management per band, encodes `RHV2` `bsn2`
 //!    packets, and writes the `ESC/P-R Level 5` stream to `stdout`.
 //! 2. **Standalone CLI mode**:
@@ -22,7 +24,7 @@ mod protocol;
 mod rhv2;
 
 use cups_raster::CupsRasterReader;
-use icc::{LcmsTransform, find_icc_profile};
+use icc::{FirmwareColorSpace, LcmsTransform, find_icc_profile};
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageDecoder, ImageReader, Rgb, RgbImage};
@@ -242,6 +244,38 @@ fn create_lcms_transform_if_needed(
         Ok(xform) => Some(xform),
         Err(e) => {
             eprintln!("WARNING: [rastertop900escpr] LittleCMS2 init failed ({e}); passing sRGB.");
+            None
+        }
+    }
+}
+
+/// Standalone CLI transform: unlike CUPS raster, the input file carries its own ICC profile, so the
+/// firmware LUT modes (`EpsonAdobeRGB`, `EpsonStandard`) convert into the color space the LUT
+/// expects, as Epson Print Layout does. The CUPS filter must not do this: its raster has no
+/// source profile and LumaPrint already sends Adobe RGB data for `EpsonAdobeRGB`.
+fn create_cli_transform(
+    cfg: &EscprJobConfig,
+    intent: &str,
+    embedded_src_icc: Option<&[u8]>,
+) -> Option<LcmsTransform> {
+    let cm = cfg.color_mode.to_ascii_lowercase();
+    let target = match cm.as_str() {
+        "epsonadobergb" | "adobergb" => FirmwareColorSpace::AdobeRgb,
+        "epsonstandard" | "srgb" => FirmwareColorSpace::Srgb,
+        _ => return create_lcms_transform_if_needed(cfg, intent, embedded_src_icc),
+    };
+    match LcmsTransform::new_to_firmware_space(target, embedded_src_icc) {
+        Ok(Some(xform)) => {
+            eprintln!(
+                "INFO: [rastertop900escpr] Converting image into {target:?} for the printer LUT"
+            );
+            Some(xform)
+        }
+        Ok(None) => None,
+        Err(e) => {
+            eprintln!(
+                "WARNING: [rastertop900escpr] LittleCMS2 init failed ({e}); sending RGB unchanged."
+            );
             None
         }
     }
@@ -938,7 +972,7 @@ fn run_cli(args: &[String]) -> i32 {
         }
     }
 
-    let xform = create_lcms_transform_if_needed(&cfg, &intent, embedded_icc.as_deref());
+    let xform = create_cli_transform(&cfg, &intent, embedded_icc.as_deref());
 
     let mut prn_stream = Vec::with_capacity(512 * 1024);
     prn_stream.extend_from_slice(&build_job_header(&cfg, print_w, print_h));

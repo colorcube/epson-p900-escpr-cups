@@ -102,8 +102,8 @@ requested level to the nearest allowed one (table from Epson's driver data).
 |---|---|---|
 | ✅ | `EpsonICC` | Convert on the host with the Epson ICC profile for the selected paper; printer color adjustment off |
 | ✅ | `NoColorAdjustment` | Send RGB unchanged, printer color adjustment off (for your own profiles / profiling targets) |
-| ✅ | `EpsonAdobeRGB` | Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode) |
-| 🟡 | `EpsonStandard` | Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`) |
+| ✅ | `EpsonAdobeRGB` | Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode). CUPS: the data must already be Adobe RGB (no conversion in the filter, e.g. LumaPrint converts); CLI `--image`: converted from the embedded profile (sRGB if none) to Adobe RGB |
+| 🟡 | `EpsonStandard` | Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`). CUPS: the data must be sRGB; CLI `--image`: converted from the embedded profile to sRGB |
 | 🟡 | `AdvancedBW` | Epson Advanced Black & White Photo mode |
 
 Source color spaces: the embedded ICC profile of the input image is honoured (sRGB ✅, Adobe RGB ✅); images without a profile are treated as sRGB.

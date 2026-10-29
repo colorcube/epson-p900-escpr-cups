@@ -4,7 +4,9 @@ A native **Rust** Linux CUPS driver (`rastertop900escpr`) for the **Epson SureCo
 SC-P900** (and, untested, the **SC-P700**) that drives the printer the same way
 Epson's official Windows and macOS drivers do: color management with Epson's
 paper-specific ICC profiles via `liblcms2` on the host, band-wise streaming
-(`RHV2` compression with `< 2 MB` peak RAM even on A2 at 720 dpi), and exact
+(the uncompressed page is never held in memory; only the `RHV2`-compressed
+bands of one page are buffered because the LCD preview must be sent first –
+their size depends on the image, ~1 MB for an A4 test chart), and exact
 media, NVRAM custom slot (`ESC q setl`), and quality settings sent to the
 printer.
 
