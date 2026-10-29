@@ -94,6 +94,7 @@ impl<R: Read> CupsRasterReader<R> {
             }
         };
 
+        let hw_res = (u32_at(5), u32_at(6));
         let width = u32_at(29);
         let height = u32_at(30);
         let bpp = u32_at(33);
@@ -102,6 +103,27 @@ impl<R: Read> CupsRasterReader<R> {
 
         if width == 0 || height == 0 {
             return Ok(None);
+        }
+
+        // Pixels are copied 1:1 into the 720 dpi print grid without resampling, and only
+        // 8-bit samples are decoded; anything else would print at the wrong size or as a
+        // blank page, so fail the job loudly instead.
+        if hw_res != (720, 720) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "unsupported CUPS raster resolution {}x{} dpi (only 720x720 dpi is supported)",
+                    hw_res.0, hw_res.1
+                ),
+            ));
+        }
+        if !matches!(bpp, 1 | 8 | 24 | 32) {
+            return Err(io::Error::new(
+                io::ErrorKind::InvalidData,
+                format!(
+                    "unsupported CUPS raster bits per pixel {bpp} (only 1, 8, 24 and 32 are supported)"
+                ),
+            ));
         }
 
         let page_hdr = CupsPageHeader {
@@ -237,8 +259,11 @@ impl<R: Read> CupsPageStream<'_, R> {
                     dst_rgb.extend_from_slice(&[v, v, v]);
                 }
             }
-            _ => {
-                dst_rgb.resize(w * 3, 0xFF);
+            other => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("unsupported CUPS raster bits per pixel {other}"),
+                ));
             }
         }
 
@@ -258,6 +283,9 @@ mod tests {
         let mut hdr = [0u8; 1796];
         // MediaType = "Baryta" (offset 128..192)
         hdr[128..134].copy_from_slice(b"Baryta");
+        // HWResolution = 720 x 720 dpi (offset 276)
+        hdr[276..280].copy_from_slice(&720u32.to_le_bytes());
+        hdr[280..284].copy_from_slice(&720u32.to_le_bytes());
         // Width = 4 px (offset 372), Height = 2 px (offset 376)
         hdr[372..376].copy_from_slice(&4u32.to_le_bytes());
         hdr[376..380].copy_from_slice(&2u32.to_le_bytes());
@@ -289,5 +317,44 @@ mod tests {
         assert_eq!(row0, vec![10, 20, 30, 10, 20, 30, 10, 20, 30, 10, 20, 30]);
         assert_eq!(row1, row0);
     }
-}
 
+    fn raster_with_header(xres: u32, yres: u32, bpp: u32) -> Vec<u8> {
+        let mut stream = Vec::new();
+        stream.extend_from_slice(b"3SaR"); // little-endian v3 (uncompressed)
+        let mut hdr = [0u8; 1796];
+        hdr[276..280].copy_from_slice(&xres.to_le_bytes());
+        hdr[280..284].copy_from_slice(&yres.to_le_bytes());
+        hdr[372..376].copy_from_slice(&4u32.to_le_bytes());
+        hdr[376..380].copy_from_slice(&1u32.to_le_bytes());
+        hdr[388..392].copy_from_slice(&bpp.to_le_bytes());
+        hdr[392..396].copy_from_slice(&(4 * bpp / 8).to_le_bytes());
+        hdr[400..404].copy_from_slice(&1u32.to_le_bytes());
+        stream.extend_from_slice(&hdr);
+        stream.extend_from_slice(&vec![0u8; (4 * bpp / 8) as usize]);
+        stream
+    }
+
+    #[test]
+    fn test_rejects_unsupported_resolution_and_bpp() {
+        let err = CupsRasterReader::new(Cursor::new(raster_with_header(360, 360, 24)))
+            .next_page()
+            .err()
+            .expect("360 dpi must be rejected");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("360x360"), "{err}");
+
+        let err = CupsRasterReader::new(Cursor::new(raster_with_header(720, 720, 48)))
+            .next_page()
+            .err()
+            .expect("16-bit RGB must be rejected");
+        assert_eq!(err.kind(), io::ErrorKind::InvalidData);
+        assert!(err.to_string().contains("48"), "{err}");
+
+        assert!(
+            CupsRasterReader::new(Cursor::new(raster_with_header(720, 720, 24)))
+                .next_page()
+                .unwrap()
+                .is_some()
+        );
+    }
+}

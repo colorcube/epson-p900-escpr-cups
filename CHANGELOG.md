@@ -7,6 +7,7 @@
 - CUPS filter behavior is unchanged: the raster carries no source profile, so `EpsonAdobeRGB` / `EpsonStandard` expect data already in that color space (LumaPrint converts itself). The PPD labels now say so: `Printer Internal Adobe RGB (Input Must Be Adobe RGB)`, `Printer Internal sRGB (Input Must Be sRGB)`.
 
 ### Fixed
+- CUPS filter: rasters with a resolution other than 720 × 720 dpi or with unsupported bits per pixel (e.g. 48 bpp / 16-bit RGB) now fail the job with a clear `InvalidData` error instead of printing at the wrong size or as a blank white page (`HWResolution` is read from header fields 5/6, bytes 276–283).
 - Corrected the memory claim (`< 2 MB` peak RAM) in README and source docs: the uncompressed page is never held in memory, but the `RHV2`-compressed bands of one page are buffered because the `ESC t tsnd` preview must precede them; their size depends on the image.
 
 ## 0.2.0 – 2026-10-26 (beta)
