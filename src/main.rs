@@ -29,8 +29,8 @@ use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageDecoder, ImageReader, Rgb, RgbImage};
 use protocol::{
-    EscprJobConfig, build_job_footer, build_job_header, get_media_spec, get_paper_size,
-    get_slot_margins_720, make_bsn2_packet, make_tsnd_packet,
+    AbwSettings, EscprJobConfig, build_job_footer, build_job_header, get_media_spec,
+    get_paper_size, get_slot_margins_720, make_bsn2_packet, make_tsnd_packet,
 };
 use std::collections::HashMap;
 use std::fs::File;
@@ -195,6 +195,19 @@ fn build_config_from_cups_opts(
         .or_else(|| opts.get("IgnorePanelMismatch"))
         .map_or(true, |v| parse_bool(v));
 
+    let mut abw = AbwSettings::default();
+    let mut abw_keys: Vec<_> = opts
+        .iter()
+        .filter(|(k, _)| k.to_ascii_lowercase().starts_with("epsonabw"))
+        .collect();
+    // `Tone` sets both wheel axes; apply it first so explicit `ToneH`/`ToneV` override it.
+    abw_keys.sort_by_key(|(k, _)| !k.eq_ignore_ascii_case("EpsonAbwTone"));
+    for (k, v) in abw_keys {
+        if !abw.apply_option(k, v) {
+            eprintln!("WARNING: [rastertop900escpr] Ignoring invalid option {k}={v}");
+        }
+    }
+
     let cfg = EscprJobConfig {
         media,
         input_slot,
@@ -216,6 +229,7 @@ fn build_config_from_cups_opts(
         bottom_edge_priority,
         rubbing_reduction,
         ignore_panel_mismatch,
+        abw,
     };
     (cfg, intent)
 }
@@ -261,7 +275,7 @@ fn create_cli_transform(
     let cm = cfg.color_mode.to_ascii_lowercase();
     let target = match cm.as_str() {
         "epsonadobergb" | "adobergb" => FirmwareColorSpace::AdobeRgb,
-        "epsonstandard" | "srgb" => FirmwareColorSpace::Srgb,
+        "epsonstandard" | "srgb" | "advancedbw" => FirmwareColorSpace::Srgb,
         _ => return create_lcms_transform_if_needed(cfg, intent, embedded_src_icc),
     };
     match LcmsTransform::new_to_firmware_space(target, embedded_src_icc) {
@@ -701,6 +715,17 @@ fn run_cli(args: &[String]) -> i32 {
                     cfg.overcoat.clone_from(v);
                 }
             }
+            "--abw" => {
+                i += 1;
+                let Some((k, v)) = args.get(i).and_then(|a| a.split_once('=')) else {
+                    eprintln!("--abw expects KEY=VALUE (e.g. Midtone=Normal)");
+                    return 2;
+                };
+                if !cfg.abw.apply_option(k, v) {
+                    eprintln!("Invalid --abw option: {k}={v}");
+                    return 2;
+                }
+            }
             "--borderless" => cfg.borderless = true,
             "--unidirectional" => cfg.unidirectional = true,
             "--user-media-id" => {
@@ -778,6 +803,9 @@ fn run_cli(args: &[String]) -> i32 {
                      rastertop900escpr job-id user title copies options [file]   (CUPS filter mode)\n  \
                      rastertop900escpr --image <PATH> [options] -o <OUT.prn>\n  \
                      rastertop900escpr --test-strip [options] -o <OUT.prn>\n  \
+                     \x20   --color-mode AdvancedBW [--abw KEY=VALUE ...]  keys: Tone (Neutral|Cool|Warm), ToneH, ToneV,\n  \
+                     \x20     Midtone (Light|Normal|Dark|Darker|Darkest), Brightness, Contrast, ShadowTone,\n  \
+                     \x20     HighlightTone, MaxDensity, HighlightShift (Off|ImageArea|FullPage)\n  \
                      rastertop900escpr --generate-ppd [--ppd-dir ppd]\n  \
                      rastertop900escpr --generate-feature-table [--check]"
                 );

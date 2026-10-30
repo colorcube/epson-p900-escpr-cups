@@ -192,6 +192,32 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
             "*EpsonRenderingIntent Absolute/Absolute Colorimetric: \"\"",
             "*CloseUI: *EpsonRenderingIntent",
             "",
+            "*OpenUI *EpsonAbwTone/Advanced B&W - Tone: PickOne",
+            "*OrderDependency: 41 AnySetup *EpsonAbwTone",
+            "*DefaultEpsonAbwTone: Neutral",
+            "*EpsonAbwTone Neutral/Neutral: \"\"",
+            "*EpsonAbwTone Cool/Cool: \"\"",
+            "*EpsonAbwTone Warm/Warm: \"\"",
+            "*CloseUI: *EpsonAbwTone",
+            "",
+            "*OpenUI *EpsonAbwMidtone/Advanced B&W - Tone (Mid-Gray): PickOne",
+            "*OrderDependency: 42 AnySetup *EpsonAbwMidtone",
+            "*DefaultEpsonAbwMidtone: Darker",
+            "*EpsonAbwMidtone Light/Light: \"\"",
+            "*EpsonAbwMidtone Normal/Normal: \"\"",
+            "*EpsonAbwMidtone Dark/Dark: \"\"",
+            "*EpsonAbwMidtone Darker/Darker (Standard): \"\"",
+            "*EpsonAbwMidtone Darkest/Darkest: \"\"",
+            "*CloseUI: *EpsonAbwMidtone",
+            "",
+            "*OpenUI *EpsonAbwHighlightShift/Advanced B&W - Highlight Point Shift: PickOne",
+            "*OrderDependency: 43 AnySetup *EpsonAbwHighlightShift",
+            "*DefaultEpsonAbwHighlightShift: Off",
+            "*EpsonAbwHighlightShift Off/Off: \"\"",
+            "*EpsonAbwHighlightShift ImageArea/On (Image Area): \"\"",
+            "*EpsonAbwHighlightShift FullPage/On (Full Page): \"\"",
+            "*CloseUI: *EpsonAbwHighlightShift",
+            "",
             "*OpenUI *EpsonOverCoat/Black Enhance Overcoat (BEO): PickOne",
             "*OrderDependency: 45 AnySetup *EpsonOverCoat",
             "*DefaultEpsonOverCoat: Off",
@@ -265,6 +291,37 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
         .into_iter()
         .map(String::from),
     );
+
+    // Advanced B&W fine adjustments (any integer in range is accepted, the PPD lists steps of 5).
+    for (order, key, label, lo, hi) in [
+        (44, "Brightness", "Brightness", -25, 25),
+        (46, "Contrast", "Contrast", -25, 25),
+        (47, "ShadowTone", "Shadow Tonality", -25, 25),
+        (48, "HighlightTone", "Highlight Tonality", -25, 25),
+        (49, "MaxDensity", "Max Optical Density", -50, 0),
+    ] {
+        let opt = format!("EpsonAbw{key}");
+        let insert_at = lines
+            .iter()
+            .position(|l| l.starts_with("*DefaultFont"))
+            .unwrap_or(lines.len());
+        let mut block = vec![
+            format!("*OpenUI *{opt}/Advanced B&W - {label}: PickOne"),
+            format!("*OrderDependency: {order} AnySetup *{opt}"),
+            format!("*Default{opt}: 0"),
+        ];
+        for v in (lo..=hi).step_by(5) {
+            let shown = if v > 0 {
+                format!("+{v}")
+            } else {
+                v.to_string()
+            };
+            block.push(format!("*{opt} {v}/{shown}: \"\""));
+        }
+        block.push(format!("*CloseUI: *{opt}"));
+        block.push(String::new());
+        lines.splice(insert_at..insert_at, block);
+    }
 
     lines.join("\n")
 }
@@ -429,7 +486,10 @@ pub fn render_feature_table() -> String {
             "EpsonStandard",
             "Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`). CUPS: the data must be sRGB; CLI `--image`: converted from the embedded profile to sRGB",
         ),
-        ("AdvancedBW", "Epson Advanced Black & White Photo mode"),
+        (
+            "AdvancedBW",
+            "Epson Advanced Black & White Photo (`ESC p setq` LUT `0x07` + `ESC q setb`, header byte-identical to Epson Print Layout). The firmware converts to gray and tones; send sRGB (CUPS) or let the CLI convert. Options `EpsonAbwTone`, `EpsonAbwMidtone`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity`, `EpsonAbwHighlightShift`, `EpsonAbwToneH`/`EpsonAbwToneV` (any integer)",
+        ),
     ] {
         let st = if tested_color.contains(&k) {
             ok

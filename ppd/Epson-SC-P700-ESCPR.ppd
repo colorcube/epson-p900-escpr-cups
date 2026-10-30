@@ -184,6 +184,32 @@
 *EpsonRenderingIntent Absolute/Absolute Colorimetric: ""
 *CloseUI: *EpsonRenderingIntent
 
+*OpenUI *EpsonAbwTone/Advanced B&W - Tone: PickOne
+*OrderDependency: 41 AnySetup *EpsonAbwTone
+*DefaultEpsonAbwTone: Neutral
+*EpsonAbwTone Neutral/Neutral: ""
+*EpsonAbwTone Cool/Cool: ""
+*EpsonAbwTone Warm/Warm: ""
+*CloseUI: *EpsonAbwTone
+
+*OpenUI *EpsonAbwMidtone/Advanced B&W - Tone (Mid-Gray): PickOne
+*OrderDependency: 42 AnySetup *EpsonAbwMidtone
+*DefaultEpsonAbwMidtone: Darker
+*EpsonAbwMidtone Light/Light: ""
+*EpsonAbwMidtone Normal/Normal: ""
+*EpsonAbwMidtone Dark/Dark: ""
+*EpsonAbwMidtone Darker/Darker (Standard): ""
+*EpsonAbwMidtone Darkest/Darkest: ""
+*CloseUI: *EpsonAbwMidtone
+
+*OpenUI *EpsonAbwHighlightShift/Advanced B&W - Highlight Point Shift: PickOne
+*OrderDependency: 43 AnySetup *EpsonAbwHighlightShift
+*DefaultEpsonAbwHighlightShift: Off
+*EpsonAbwHighlightShift Off/Off: ""
+*EpsonAbwHighlightShift ImageArea/On (Image Area): ""
+*EpsonAbwHighlightShift FullPage/On (Full Page): ""
+*CloseUI: *EpsonAbwHighlightShift
+
 *OpenUI *EpsonOverCoat/Black Enhance Overcoat (BEO): PickOne
 *OrderDependency: 45 AnySetup *EpsonOverCoat
 *DefaultEpsonOverCoat: Off
@@ -249,6 +275,86 @@
 *EpsonIgnorePanelMismatch True/Ignore Panel Mismatch (Print Immediately): ""
 *EpsonIgnorePanelMismatch False/Verify Against Printer Panel Setting: ""
 *CloseUI: *EpsonIgnorePanelMismatch
+
+*OpenUI *EpsonAbwBrightness/Advanced B&W - Brightness: PickOne
+*OrderDependency: 44 AnySetup *EpsonAbwBrightness
+*DefaultEpsonAbwBrightness: 0
+*EpsonAbwBrightness -25/-25: ""
+*EpsonAbwBrightness -20/-20: ""
+*EpsonAbwBrightness -15/-15: ""
+*EpsonAbwBrightness -10/-10: ""
+*EpsonAbwBrightness -5/-5: ""
+*EpsonAbwBrightness 0/0: ""
+*EpsonAbwBrightness 5/+5: ""
+*EpsonAbwBrightness 10/+10: ""
+*EpsonAbwBrightness 15/+15: ""
+*EpsonAbwBrightness 20/+20: ""
+*EpsonAbwBrightness 25/+25: ""
+*CloseUI: *EpsonAbwBrightness
+
+*OpenUI *EpsonAbwContrast/Advanced B&W - Contrast: PickOne
+*OrderDependency: 46 AnySetup *EpsonAbwContrast
+*DefaultEpsonAbwContrast: 0
+*EpsonAbwContrast -25/-25: ""
+*EpsonAbwContrast -20/-20: ""
+*EpsonAbwContrast -15/-15: ""
+*EpsonAbwContrast -10/-10: ""
+*EpsonAbwContrast -5/-5: ""
+*EpsonAbwContrast 0/0: ""
+*EpsonAbwContrast 5/+5: ""
+*EpsonAbwContrast 10/+10: ""
+*EpsonAbwContrast 15/+15: ""
+*EpsonAbwContrast 20/+20: ""
+*EpsonAbwContrast 25/+25: ""
+*CloseUI: *EpsonAbwContrast
+
+*OpenUI *EpsonAbwShadowTone/Advanced B&W - Shadow Tonality: PickOne
+*OrderDependency: 47 AnySetup *EpsonAbwShadowTone
+*DefaultEpsonAbwShadowTone: 0
+*EpsonAbwShadowTone -25/-25: ""
+*EpsonAbwShadowTone -20/-20: ""
+*EpsonAbwShadowTone -15/-15: ""
+*EpsonAbwShadowTone -10/-10: ""
+*EpsonAbwShadowTone -5/-5: ""
+*EpsonAbwShadowTone 0/0: ""
+*EpsonAbwShadowTone 5/+5: ""
+*EpsonAbwShadowTone 10/+10: ""
+*EpsonAbwShadowTone 15/+15: ""
+*EpsonAbwShadowTone 20/+20: ""
+*EpsonAbwShadowTone 25/+25: ""
+*CloseUI: *EpsonAbwShadowTone
+
+*OpenUI *EpsonAbwHighlightTone/Advanced B&W - Highlight Tonality: PickOne
+*OrderDependency: 48 AnySetup *EpsonAbwHighlightTone
+*DefaultEpsonAbwHighlightTone: 0
+*EpsonAbwHighlightTone -25/-25: ""
+*EpsonAbwHighlightTone -20/-20: ""
+*EpsonAbwHighlightTone -15/-15: ""
+*EpsonAbwHighlightTone -10/-10: ""
+*EpsonAbwHighlightTone -5/-5: ""
+*EpsonAbwHighlightTone 0/0: ""
+*EpsonAbwHighlightTone 5/+5: ""
+*EpsonAbwHighlightTone 10/+10: ""
+*EpsonAbwHighlightTone 15/+15: ""
+*EpsonAbwHighlightTone 20/+20: ""
+*EpsonAbwHighlightTone 25/+25: ""
+*CloseUI: *EpsonAbwHighlightTone
+
+*OpenUI *EpsonAbwMaxDensity/Advanced B&W - Max Optical Density: PickOne
+*OrderDependency: 49 AnySetup *EpsonAbwMaxDensity
+*DefaultEpsonAbwMaxDensity: 0
+*EpsonAbwMaxDensity -50/-50: ""
+*EpsonAbwMaxDensity -45/-45: ""
+*EpsonAbwMaxDensity -40/-40: ""
+*EpsonAbwMaxDensity -35/-35: ""
+*EpsonAbwMaxDensity -30/-30: ""
+*EpsonAbwMaxDensity -25/-25: ""
+*EpsonAbwMaxDensity -20/-20: ""
+*EpsonAbwMaxDensity -15/-15: ""
+*EpsonAbwMaxDensity -10/-10: ""
+*EpsonAbwMaxDensity -5/-5: ""
+*EpsonAbwMaxDensity 0/0: ""
+*CloseUI: *EpsonAbwMaxDensity
 
 *DefaultFont: Courier
 *Font Courier: Standard "(001.001)" Standard ROM

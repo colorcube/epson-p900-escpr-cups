@@ -804,6 +804,140 @@ pub fn get_slot_margins_720(input_slot: &str, borderless: bool, default_margin_7
     (default_margin_720, default_margin_720)
 }
 
+/// Advanced B&W Photo settings, sent as `ESC q setb` and mirrored in the REMOTE1 `HD` block.
+/// Layout and value ranges verified against Epson Print Layout captures
+/// (`epson-p900-analyse/epl_reference/captures/EINSTELLUNGEN.md`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AbwSettings {
+    /// Toning wheel, horizontal axis (`-75..=75`; Cool preset -8, Warm preset 4).
+    pub tone_h: i32,
+    /// Toning wheel, vertical axis (`-75..=75`; Cool preset -45, Warm preset 20).
+    pub tone_v: i32,
+    /// Mid-gray tone: 0 Light, 1 Normal, 2 Dark, 3 Darker (EPL default), 4 Darkest.
+    pub midtone: u8,
+    pub brightness: i32,
+    pub contrast: i32,
+    pub shadow_tonality: i32,
+    pub highlight_tonality: i32,
+    /// Max optical density (`-50..=0`).
+    pub max_density: i32,
+    /// Highlight point shift: 0 off, 1 image area, 2 full page.
+    pub highlight_shift: u8,
+}
+
+impl Default for AbwSettings {
+    fn default() -> Self {
+        Self {
+            tone_h: 0,
+            tone_v: 0,
+            midtone: 3,
+            brightness: 0,
+            contrast: 0,
+            shadow_tonality: 0,
+            highlight_tonality: 0,
+            max_density: 0,
+            highlight_shift: 0,
+        }
+    }
+}
+
+pub const ABW_MIDTONES: [&str; 5] = ["Light", "Normal", "Dark", "Darker", "Darkest"];
+pub const ABW_HIGHLIGHT_SHIFTS: [&str; 3] = ["Off", "ImageArea", "FullPage"];
+/// Toning presets with their wheel coordinates as set by Epson Print Layout.
+pub const ABW_TONE_PRESETS: [(&str, i32, i32); 3] =
+    [("Neutral", 0, 0), ("Cool", -8, -45), ("Warm", 4, 20)];
+
+impl AbwSettings {
+    fn clamped(&self) -> Self {
+        Self {
+            tone_h: self.tone_h.clamp(-75, 75),
+            tone_v: self.tone_v.clamp(-75, 75),
+            midtone: self.midtone.min(4),
+            brightness: self.brightness.clamp(-25, 25),
+            contrast: self.contrast.clamp(-25, 25),
+            shadow_tonality: self.shadow_tonality.clamp(-25, 25),
+            highlight_tonality: self.highlight_tonality.clamp(-25, 25),
+            max_density: self.max_density.clamp(-50, 0),
+            highlight_shift: self.highlight_shift.min(2),
+        }
+    }
+
+    /// Applies one option (`Tone`, `ToneH`, `ToneV`, `Midtone`, `Brightness`, `Contrast`,
+    /// `ShadowTone`, `HighlightTone`, `MaxDensity`, `HighlightShift`; case-insensitive, optional
+    /// `EpsonAbw` prefix). Returns `false` for unknown keys or unparsable values.
+    pub fn apply_option(&mut self, key: &str, value: &str) -> bool {
+        let lower = key.to_ascii_lowercase();
+        let k = lower.strip_prefix("epsonabw").unwrap_or(&lower);
+        let v = value.trim();
+        let int = || v.trim_start_matches('+').parse::<i32>().ok();
+        let index_of = |names: &[&str]| {
+            names
+                .iter()
+                .position(|n| n.eq_ignore_ascii_case(v))
+                .and_then(|i| u8::try_from(i).ok())
+                .or_else(|| v.parse::<u8>().ok())
+        };
+        let target = match k {
+            "tone" => {
+                let Some((_, h, vv)) = ABW_TONE_PRESETS
+                    .iter()
+                    .find(|(n, _, _)| n.eq_ignore_ascii_case(v))
+                else {
+                    return false;
+                };
+                self.tone_h = *h;
+                self.tone_v = *vv;
+                return true;
+            }
+            "midtone" => {
+                return index_of(&ABW_MIDTONES).is_some_and(|m| {
+                    self.midtone = m;
+                    true
+                });
+            }
+            "highlightshift" => {
+                return index_of(&ABW_HIGHLIGHT_SHIFTS).is_some_and(|m| {
+                    self.highlight_shift = m;
+                    true
+                });
+            }
+            "toneh" => &mut self.tone_h,
+            "tonev" => &mut self.tone_v,
+            "brightness" => &mut self.brightness,
+            "contrast" => &mut self.contrast,
+            "shadowtone" => &mut self.shadow_tonality,
+            "highlighttone" => &mut self.highlight_tonality,
+            "maxdensity" => &mut self.max_density,
+            _ => return false,
+        };
+        int().is_some_and(|n| {
+            *target = n;
+            true
+        })
+    }
+
+    /// `ESC q setb` payload: nine big-endian two's-complement `i32`.
+    pub fn setb_payload(&self) -> [u8; 36] {
+        let a = self.clamped();
+        let vals = [
+            a.tone_h,
+            a.tone_v,
+            160 + 20 * i32::from(a.midtone),
+            a.brightness,
+            a.contrast,
+            a.shadow_tonality,
+            a.highlight_tonality,
+            a.max_density,
+            i32::from(a.highlight_shift),
+        ];
+        let mut out = [0u8; 36];
+        for (chunk, v) in out.chunks_exact_mut(4).zip(vals) {
+            chunk.copy_from_slice(&v.to_be_bytes());
+        }
+        out
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct EscprJobConfig {
     pub media: String,
@@ -826,6 +960,7 @@ pub struct EscprJobConfig {
     pub bottom_edge_priority: Option<bool>,
     pub rubbing_reduction: Option<u16>,
     pub ignore_panel_mismatch: bool,
+    pub abw: AbwSettings,
 }
 
 impl Default for EscprJobConfig {
@@ -851,6 +986,7 @@ impl Default for EscprJobConfig {
             bottom_edge_priority: None,
             rubbing_reduction: None,
             ignore_panel_mismatch: true,
+            abw: AbwSettings::default(),
         }
     }
 }
@@ -920,7 +1056,6 @@ fn build_remote1_hd_payload(
     paper: &PaperSizeSpec,
     q_val: u8,
     overcoat_val: u8,
-    color_byte: u8,
     lut_byte: u8,
 ) -> Vec<u8> {
     fn tlv_str(tag: u8, val_byte: Option<u8>, text: &str) -> Vec<u8> {
@@ -950,11 +1085,7 @@ fn build_remote1_hd_payload(
         (3u8, "Fine - 1440x720dpi")
     };
 
-    let color_str = if color_byte == 3 {
-        "Black/White"
-    } else {
-        "Color"
-    };
+    let is_abw = lut_byte == 7;
     let lut_str = if lut_byte == 4 {
         "Off (No Color Adjustment)"
     } else if lut_byte == 6 {
@@ -976,20 +1107,59 @@ fn build_remote1_hd_payload(
     hd.extend_from_slice(&tlv_str(0x01, None, job_title));
     hd.extend_from_slice(&tlv_str(0x02, Some(media.sn_id), &media.name));
     hd.extend_from_slice(&tlv_str(0x03, Some(paper.size_id), paper.name));
-    hd.extend_from_slice(&tlv_str(0x04, Some(color_byte), color_str));
+    if is_abw {
+        hd.extend_from_slice(&tlv_str(0x04, Some(1), "Advanced B&W Photo"));
+    } else {
+        hd.extend_from_slice(&tlv_str(0x04, Some(0), "Color"));
+    }
     hd.extend_from_slice(&tlv_str(0x05, Some(q_val), q_label));
     hd.extend_from_slice(&tlv_str(
         0x06,
         Some(if overcoat_on { 1 } else { 0 }),
         if overcoat_on { "On" } else { "Off" },
     ));
-    hd.extend_from_slice(&tlv_str(0x07, Some(lut_byte), lut_str));
-    hd.extend_from_slice(&tlv_str(0x08, Some(1), "2.2"));
-    hd.extend_from_slice(&tlv_str(0x09, Some(0x19), "0"));
-    hd.extend_from_slice(&tlv_str(0x0A, Some(0x19), "0"));
-    hd.extend_from_slice(&tlv_str(0x0B, Some(0x19), "0"));
-    hd.extend_from_slice(&tlv_str(0x17, Some(0x4B), "0"));
-    hd.extend_from_slice(&tlv_str(0x18, Some(0x4B), "0"));
+    if is_abw {
+        // Value byte = setting + offset, text = setting (same tag order as Epson Print Layout).
+        let a = cfg.abw.clamped();
+        let num = |tag: u8, v: i32, offset: i32| {
+            let vb = u8::try_from(v + offset).unwrap_or(0);
+            tlv_str(tag, Some(vb), &v.to_string())
+        };
+        let preset = ABW_TONE_PRESETS
+            .iter()
+            .position(|(_, h, v)| *h == a.tone_h && *v == a.tone_v);
+        let (preset_val, preset_str) = match preset {
+            Some(0) => (0u8, "Neutral"),
+            Some(2) => (2u8, "Warm"),
+            _ => (0x80u8, "Custom"),
+        };
+        hd.extend_from_slice(&num(0x14, a.brightness, 25));
+        hd.extend_from_slice(&num(0x15, a.contrast, 25));
+        hd.extend_from_slice(&tlv_str(0x12, Some(preset_val), preset_str));
+        hd.extend_from_slice(&tlv_str(
+            0x13,
+            Some(a.midtone),
+            ABW_MIDTONES[usize::from(a.midtone)],
+        ));
+        hd.extend_from_slice(&num(0x16, a.shadow_tonality, 25));
+        hd.extend_from_slice(&num(0x17, a.tone_h, 75));
+        hd.extend_from_slice(&num(0x18, a.tone_v, 75));
+        hd.extend_from_slice(&num(0x19, a.highlight_tonality, 25));
+        hd.extend_from_slice(&num(0x1A, a.max_density, 50));
+        hd.extend_from_slice(&tlv_str(
+            0x1B,
+            Some(a.highlight_shift),
+            ["Off", "On", "On (Full Page)"][usize::from(a.highlight_shift)],
+        ));
+    } else {
+        hd.extend_from_slice(&tlv_str(0x07, Some(lut_byte), lut_str));
+        hd.extend_from_slice(&tlv_str(0x08, Some(1), "2.2"));
+        hd.extend_from_slice(&tlv_str(0x09, Some(0x19), "0"));
+        hd.extend_from_slice(&tlv_str(0x0A, Some(0x19), "0"));
+        hd.extend_from_slice(&tlv_str(0x0B, Some(0x19), "0"));
+        hd.extend_from_slice(&tlv_str(0x17, Some(0x4B), "0"));
+        hd.extend_from_slice(&tlv_str(0x18, Some(0x4B), "0"));
+    }
     hd.extend_from_slice(&tlv_str(0x1C, Some(res_id), res_str));
     hd.extend_from_slice(&tlv_str(0x1E, Some(0), "Off"));
     hd
@@ -1018,18 +1188,21 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
 
     let q_val = resolve_firmware_print_quality(&media, &cfg.quality, overcoat_val);
 
-    let (color_byte, lut_byte) = if cfg.color_mode.eq_ignore_ascii_case("advancedbw") {
-        (3u8, 7u8)
+    // The color byte of `ESC q setq` / `ESC p setq` stays 0 in every mode, including Advanced B&W:
+    // Epson Print Layout selects ABW through LUT 7 plus `ESC q setb`.
+    let is_abw = cfg.color_mode.eq_ignore_ascii_case("advancedbw");
+    let lut_byte = if is_abw {
+        7u8
     } else if cfg.color_mode.eq_ignore_ascii_case("epsonadobergb")
         || cfg.color_mode.eq_ignore_ascii_case("adobergb")
     {
-        (0u8, 6u8)
+        6u8
     } else if cfg.color_mode.eq_ignore_ascii_case("epsonstandard")
         || cfg.color_mode.eq_ignore_ascii_case("srgb")
     {
-        (0u8, 0u8)
+        0u8
     } else {
-        (0u8, 4u8)
+        4u8
     };
 
     let ti_payload = local_timestamp_payload();
@@ -1053,15 +1226,7 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
     .take(31)
     .collect();
 
-    let hd_payload = build_remote1_hd_payload(
-        cfg,
-        &media,
-        &paper,
-        q_val,
-        overcoat_val,
-        color_byte,
-        lut_byte,
-    );
+    let hd_payload = build_remote1_hd_payload(cfg, &media, &paper, q_val, overcoat_val, lut_byte);
 
     let mut out = Vec::with_capacity(1024);
     // 1a. EJL + REMOTE1 Job Initialization
@@ -1094,12 +1259,17 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
     out.extend_from_slice(b"\x1b(R\x06\x00\x00ESCPR");
 
     // 3. ESC q setq (9 bytes)
-    let q_setq = [media.sn_id, q_val, color_byte, 0, 0, 0, 3, 0, 0];
+    let q_setq = [media.sn_id, q_val, 0, 0, 0, 0, 3, 0, 0];
     out.extend_from_slice(&make_escpr_packet(b'q', b"setq", &q_setq));
 
     // 4. ESC q seti (8 bytes)
     let q_seti = [1, 0, 0, 0, 0, 0, overcoat_val, 0];
     out.extend_from_slice(&make_escpr_packet(b'q', b"seti", &q_seti));
+
+    // 4b. ESC q setb (36 bytes, Advanced B&W Photo parameters)
+    if is_abw {
+        out.extend_from_slice(&make_escpr_packet(b'q', b"setb", &cfg.abw.setb_payload()));
+    }
 
     // 5. ESC m setm (7 bytes)
     let m_setm = [
@@ -1156,7 +1326,6 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
 
     // 9. ESC p setq (12 bytes)
     let mut p_setq = [0u8; 12];
-    p_setq[0] = color_byte;
     p_setq[1] = 3;
     p_setq[2] = lut_byte;
     p_setq[3..5].copy_from_slice(&220u16.to_be_bytes());
@@ -1316,6 +1485,46 @@ mod tests {
                 .any(|w| w == expected_seti),
             "ESC m seti not found in job header"
         );
+    }
+
+    #[test]
+    fn test_abw_setb_matches_epson_print_layout() {
+        // Capture AdvancedBW-A: Cool (-8/-45), Light, +5, -7, +9, -11, -13, highlight shift off.
+        let mut abw = AbwSettings::default();
+        for (k, v) in [
+            ("EpsonAbwTone", "Cool"),
+            ("Midtone", "Light"),
+            ("Brightness", "+5"),
+            ("Contrast", "-7"),
+            ("ShadowTone", "9"),
+            ("HighlightTone", "-11"),
+            ("MaxDensity", "-13"),
+        ] {
+            assert!(abw.apply_option(k, v), "{k}={v}");
+        }
+        let expected_a: [u8; 36] = [
+            0xff, 0xff, 0xff, 0xf8, 0xff, 0xff, 0xff, 0xd3, 0, 0, 0, 0xa0, 0, 0, 0, 0x05, 0xff,
+            0xff, 0xff, 0xf9, 0, 0, 0, 0x09, 0xff, 0xff, 0xff, 0xf5, 0xff, 0xff, 0xff, 0xf3, 0, 0,
+            0, 0,
+        ];
+        assert_eq!(abw.setb_payload(), expected_a);
+        assert!(!abw.apply_option("Midtone", "Medium"));
+        assert!(!abw.apply_option("Unknown", "1"));
+
+        // Default = EPL "Neutral / Darker"; header uses color byte 0, LUT 7 and sends setb.
+        let cfg = EscprJobConfig {
+            media: "PhotoPaperGlossy".to_string(),
+            color_mode: "AdvancedBW".to_string(),
+            ..Default::default()
+        };
+        let hdr = build_job_header(&cfg, 5784, 8250);
+        let mut setb = b"\x1bq\x24\x00\x00\x00setb".to_vec();
+        setb.extend_from_slice(&[0u8; 11]);
+        setb.push(0xdc);
+        setb.extend_from_slice(&[0u8; 24]);
+        assert!(hdr.windows(setb.len()).any(|w| w == setb.as_slice()));
+        let p_setq = b"\x1bp\x0c\x00\x00\x00setq\x00\x03\x07\x00\xdc";
+        assert!(hdr.windows(p_setq.len()).any(|w| w == p_setq));
     }
 
     #[test]

@@ -81,7 +81,7 @@ Packet format: `ESC <class char> <uint32 LE payload length> <4 ASCII command> <p
 |---:|---:|---|
 | 0 | 1 | MediaTypeID (firmware base media ID, e.g. 0 plain, 25 Velvet Fine Art, 52 Photo Paper Glossy, 174 Baryta) |
 | 1 | 1 | PrintQuality (allowed values depend on media, see `resolve_firmware_print_quality`) |
-| 2 | 1 | ColorMode (0 color, 3 Advanced B&W) |
+| 2 | 1 | ColorMode, always 0 (also in Advanced B&W; Epson Print Layout selects ABW via LUT 7 + `ESC q setb`) |
 | 3–5 | 3 | brightness / contrast / saturation *(assumed)*, always 0 |
 | 6 | 1 | ColorPlane = 3 |
 | 7 | 2 | PaletteSize = 0 |
@@ -91,6 +91,26 @@ Packet format: `ESC <class char> <uint32 LE payload length> <4 ASCII command> <p
 `CompressMode (1 = RHV2), StaticAPF, ConvertColorSpace, BarcodeMode,
 FaceOrder, StandardFastMode, OverCoat (1 off, 2 Black Enhance Overcoat),
 GlossPriority`
+
+### `ESC q setb` – Advanced B&W Photo (36 bytes, only with LUT 7)
+
+Sent right after `ESC q seti`. Nine big-endian two's-complement `i32`
+(decoded from Epson Print Layout captures):
+
+| Index | Field | Range |
+|---:|---|---|
+| 0 | Toning wheel horizontal (Cool −8, Warm 4) | −75 … 75 |
+| 1 | Toning wheel vertical (Cool −45, Warm 20) | −75 … 75 |
+| 2 | Mid-gray tone as gamma × 100: Light 160, Normal 180, Dark 200, Darker 220 (default), Darkest 240 | |
+| 3 | Brightness | −25 … 25 |
+| 4 | Contrast | −25 … 25 |
+| 5 | Shadow tonality | −25 … 25 |
+| 6 | Highlight tonality | −25 … 25 |
+| 7 | Max optical density | −50 … 0 |
+| 8 | Highlight point shift: 0 off, 1 image area, 2 full page | |
+
+The host still sends RGB (EPL converts to sRGB first); gray conversion and
+toning happen in the firmware.
 
 ### `ESC m setm` – mechanical setting (7 bytes)
 
@@ -128,7 +148,7 @@ PrintDirection u8`
 
 ### `ESC p setq` – page quality (12 bytes)
 
-`ColorMode, ColorPlane (3), LUT, Gamma u16 (220 = 2.2), PrintDuty i8 (-50..+50), 6 × 0`.
+`ColorMode (0), ColorPlane (3), LUT, Gamma u16 (220 = 2.2), PrintDuty i8 (-50..+50), 6 × 0`.
 LUT 4 = no color adjustment (host ICC), 0 = Epson standard, 7 = Advanced B&W.
 `PrintDuty` (byte 5) is the signed 8-bit color density adjustment (`-50..+50%`,
 used by `.emx` custom media profiles or manual density overrides).
