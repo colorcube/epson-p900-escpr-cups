@@ -493,6 +493,9 @@ fn run_cups_filter(args: &[String]) -> i32 {
             return 1;
         }
 
+        if cfg.color_mode.eq_ignore_ascii_case("AdvancedBW") {
+            grayscale_preview_in_place(&mut thumb_img);
+        }
         let mut jpeg_buf = Vec::with_capacity(16384);
         let mut enc = JpegEncoder::new_with_quality(&mut jpeg_buf, 95);
         if enc
@@ -528,9 +531,26 @@ fn run_cups_filter(args: &[String]) -> i32 {
     0
 }
 
+/// Advanced B&W: the printer prints gray, so show a neutral gray LCD preview. Epson Print Layout
+/// does the same (its ABW thumbnails are untoned gray, even with Warm toning).
+fn grayscale_preview_in_place(img: &mut RgbImage) {
+    for p in img.pixels_mut() {
+        // Rec. 709 luma on the sRGB-encoded values.
+        let y = (2126 * u32::from(p[0]) + 7152 * u32::from(p[1]) + 722 * u32::from(p[2]) + 5000)
+            / 10_000;
+        let y = u8::try_from(y).unwrap_or(u8::MAX);
+        *p = Rgb([y, y, y]);
+    }
+}
+
 /// Build the 272-px-tall rotated baseline JPEG LCD preview thumbnail (`388x272` for A4)
-/// for `ESC t tsnd`.
-fn build_preview_jpeg(page_rgb: &[u8], print_w: u32, print_h: u32) -> Option<Vec<u8>> {
+/// for `ESC t tsnd`; `grayscale` for Advanced B&W.
+fn build_preview_jpeg(
+    page_rgb: &[u8],
+    print_w: u32,
+    print_h: u32,
+    grayscale: bool,
+) -> Option<Vec<u8>> {
     if print_w == 0 || print_h == 0 {
         return None;
     }
@@ -553,6 +573,9 @@ fn build_preview_jpeg(page_rgb: &[u8], print_w: u32, print_h: u32) -> Option<Vec
             // Rotate 90° counter-clockwise: (px, py) -> (py, portrait_w - 1 - px)
             small.put_pixel(py, portrait_w - 1 - px, p);
         }
+    }
+    if grayscale {
+        grayscale_preview_in_place(&mut small);
     }
 
     let mut jpeg_buf = Vec::with_capacity(16384);
@@ -985,7 +1008,9 @@ fn run_cli(args: &[String]) -> i32 {
     }
 
     // 1. Build LCD preview thumbnail BEFORE ICC transform so the printer screen shows sRGB
-    let preview_pkt = build_preview_jpeg(&canvas, print_w, print_h).map(|j| make_tsnd_packet(&j));
+    let abw = cfg.color_mode.eq_ignore_ascii_case("AdvancedBW");
+    let preview_pkt =
+        build_preview_jpeg(&canvas, print_w, print_h, abw).map(|j| make_tsnd_packet(&j));
 
     // 2. Find last non-white band so trailing white space is not transmitted
     let band_lines = BAND_LINES as usize;
@@ -1086,6 +1111,15 @@ fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_abw_preview_is_neutral_gray() {
+        let mut img = RgbImage::from_pixel(2, 1, Rgb([255, 128, 0]));
+        img.put_pixel(1, 0, Rgb([255, 255, 255]));
+        grayscale_preview_in_place(&mut img);
+        assert_eq!(img.get_pixel(0, 0), &Rgb([146, 146, 146]));
+        assert_eq!(img.get_pixel(1, 0), &Rgb([255, 255, 255]));
+    }
 
     #[test]
     fn test_resolve_quality_from_cups_opts() {
