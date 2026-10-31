@@ -104,7 +104,7 @@ requested level to the nearest allowed one (table from Epson's driver data).
 | ✅ | `NoColorAdjustment` | Send RGB unchanged, printer color adjustment off (for your own profiles / profiling targets) |
 | ✅ | `EpsonAdobeRGB` | Let the printer firmware apply its internal Adobe RGB LUT (`ESC p setq` LUT `0x06`, Epson Print Layout mode). CUPS: the data must already be Adobe RGB (no conversion in the filter, e.g. LumaPrint converts); CLI `--image`: converted from the embedded profile (sRGB if none) to Adobe RGB |
 | 🟡 | `EpsonStandard` | Let the printer firmware apply its own sRGB conversion (`ESC p setq` LUT `0x00`). CUPS: the data must be sRGB; CLI `--image`: converted from the embedded profile to sRGB |
-| 🟡 | `AdvancedBW` | Epson Advanced Black & White Photo (`ESC p setq` LUT `0x07` + `ESC q setb`, header byte-identical to Epson Print Layout). The firmware converts to gray and tones; send sRGB (CUPS) or let the CLI convert. Options `EpsonAbwTone`, `EpsonAbwMidtone`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity`, `EpsonAbwHighlightShift`, `EpsonAbwToneH`/`EpsonAbwToneV` (any integer) |
+| ✅ | `AdvancedBW` | Epson Advanced Black & White Photo (`ESC p setq` LUT `0x07` + `ESC q setb`, header byte-identical to Epson Print Layout). The firmware converts to gray and tones; send sRGB (CUPS) or let the CLI convert. Options `EpsonAbwTone`, `EpsonAbwMidtone`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity`, `EpsonAbwHighlightShift`, `EpsonAbwToneH`/`EpsonAbwToneV` (any integer) |
 
 Source color spaces: the embedded ICC profile of the input image is honoured (sRGB ✅, Adobe RGB ✅); images without a profile are treated as sRGB.
 

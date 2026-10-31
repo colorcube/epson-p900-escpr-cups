@@ -13,8 +13,10 @@ printer.
 > [!WARNING]
 > **Beta / experimental.** Verified on a real SC-P900 so far: plain paper and
 > Epson Photo Paper Glossy from the rear sheet feeder, A4, quality "High",
-> Epson ICC color management, plus custom media NVRAM slot discovery. Everything
-> else is implemented from Epson's driver data but has not been printed yet – see
+> Epson ICC color management, Advanced B&W Photo, Black Enhance Overcoat, plus
+> custom media NVRAM slot discovery. The job header is byte-identical to Epson
+> Print Layout for all captured modes. Everything else is implemented from
+> Epson's driver data but has not been printed yet – see
 > [docs/supported-features.md](docs/supported-features.md).
 
 ## Results

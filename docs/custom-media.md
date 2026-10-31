@@ -68,7 +68,7 @@ After updating `custom_media.json`, regenerate and reinstall the CUPS PPD:
 
 ```bash
 ./target/release/rastertop900escpr --generate-ppd
-sudo ./install.sh 10.10.10.124
+sudo ./install.sh 192.0.2.10
 ```
 
 ---
@@ -80,7 +80,7 @@ packages is handled by the standalone companion project
 **[`ep-media-installer` (`epmi`)](../../ep-media-installer)** (a Python prototype
 is also preserved on the `python-prototype` branch of this repository).
 
-Example live slots from an SC-P900 (`10.10.10.124`) stored in `custom_media.json`:
+Example live slots from an SC-P900 (`192.0.2.10`) stored in `custom_media.json`:
 
 ```text
 Slot  UI ID  32-bit MA_ID  BaseSN  Gap                     Thick  Dry  Media Name (Printer LCD)
@@ -132,7 +132,7 @@ lp -d Epson_SC_P900_ESCPR \
     --media Slot05_Example_Baryta_Fibre \
     --input-slot FrontFineArt \
     --quality Max \
-    --send 10.10.10.124:9100
+    --send 192.0.2.10:9100
 
 # Or using on-the-fly parameters (--user-media-id accepts 1..30, 1901..1930, or 32-bit MA_ID):
 ./target/release/rastertop900escpr \
@@ -145,7 +145,7 @@ lp -d Epson_SC_P900_ESCPR \
     --print-duty -5 \
     --drying-time 2 \
     --bottom-edge-priority \
-    --send 10.10.10.124:9100
+    --send 192.0.2.10:9100
 ```
 
 ---

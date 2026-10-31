@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 – 2026-10-31 (beta)
 
 ### Added
 - Advanced B&W Photo settings (`ESC q setb`, nine big-endian `i32`: toning wheel H/V, mid-gray tone as gamma × 100, brightness, contrast, shadow/highlight tonality, max optical density, highlight point shift), decoded from Epson Print Layout captures. New CUPS/PPD options `EpsonAbwTone` (Neutral/Cool/Warm), `EpsonAbwMidtone` (Light … Darkest, default Darker as in EPL), `EpsonAbwHighlightShift`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity` (PPD lists steps of 5, any integer in range is accepted) and `EpsonAbwToneH`/`EpsonAbwToneV`; CLI `--abw KEY=VALUE`.
