@@ -76,10 +76,14 @@ sudo ./install.sh
 sudo ./install.sh 192.0.2.10
 ```
 
-This installs the single compiled binary `/usr/lib/cups/filter/rastertop900escpr`,
-`custom_media.json` to `/usr/share/epson-p900-escpr-cups/`, the PPDs to
-`/usr/share/cups/model/epson-p900-escpr/`, and the ICC profiles to
-`/usr/share/color/icc/epson-scp900/`.
+This installs the filter `/usr/lib/cups/filter/rastertop900escpr`, the CUPS PPD
+generator `/usr/lib/cups/driver/epson-p900-escpr`, the static PPDs to
+`/usr/share/cups/model/epson-p900-escpr/`, the ICC profiles to
+`/usr/share/color/icc/epson-scp900/`, and the media helper
+`/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install` with its polkit
+policy. Custom papers are installed system-wide with
+[`ep-media-installer`](https://github.com/colorcube/ep-media-installer), see
+[docs/custom-media.md](docs/custom-media.md).
 
 ### Adding the printer manually in KDE / GNOME / CUPS Web UI (`http://localhost:631`)
 

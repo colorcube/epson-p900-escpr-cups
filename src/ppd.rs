@@ -2,7 +2,9 @@
 //!
 //! SPDX-License-Identifier: GPL-3.0-or-later
 
-use crate::protocol::{INPUT_SLOTS, PAPER_SIZES, QUALITY_MODES, builtin_media_specs, media_registry};
+use crate::protocol::{
+    INPUT_SLOTS, MediaRegistry, PAPER_SIZES, QUALITY_MODES, builtin_media_specs, media_registry,
+};
 use std::path::Path;
 
 fn ppd_safe_text(text: &str) -> String {
@@ -19,7 +21,13 @@ fn ppd_safe_text(text: &str) -> String {
     ascii
 }
 
-pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
+/// PPD including the custom media of the system database (CUPS PPD generator, queue updates).
+pub fn build_ppd(model_name: &str, is_p900: bool) -> String {
+    build_ppd_with(media_registry(), model_name, is_p900)
+}
+
+/// PPD for an explicit media registry.
+pub fn build_ppd_with(registry: &MediaRegistry, _model_name: &str, is_p900: bool) -> String {
     let short_model = if is_p900 { "SC-P900" } else { "SC-P700" };
     let file_name = format!("Epson-{short_model}-ESCPR.ppd");
     let pc_file = &file_name[..file_name.len().min(12)];
@@ -27,7 +35,7 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
         .iter()
         .filter(|p| is_p900 || !p.sc_p900_only)
         .collect();
-    let media_specs = &media_registry().specs;
+    let media_specs = &registry.specs;
 
     let mut lines: Vec<String> = Vec::with_capacity(320);
     lines.push("*PPD-Adobe: \"4.3\"".to_string());
@@ -39,7 +47,9 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
     lines.push("*Manufacturer: \"EPSON\"".to_string());
     lines.push(format!("*Product: \"({short_model} Series)\""));
     lines.push(format!("*ModelName: \"EPSON {short_model} Series\""));
-    lines.push(format!("*ShortNickName: \"EPSON {short_model} (ESCPR+ICC)\""));
+    lines.push(format!(
+        "*ShortNickName: \"EPSON {short_model} (ESCPR+ICC)\""
+    ));
     lines.push(format!(
         "*NickName: \"EPSON {short_model} Series (SureColor) - Official ICC + ESC/P-R Lv5 (high quality)\""
     ));
@@ -55,9 +65,7 @@ pub fn build_ppd(_model_name: &str, is_p900: bool) -> String {
     lines.push("*cupsVersion: 2.3".to_string());
     lines.push("*cupsModelNumber: 1".to_string());
     lines.push("*cupsManualCopies: False".to_string());
-    lines.push(
-        "*cupsFilter: \"application/vnd.cups-raster 50 rastertop900escpr\"".to_string(),
-    );
+    lines.push("*cupsFilter: \"application/vnd.cups-raster 50 rastertop900escpr\"".to_string());
     lines.push(format!(
         "*1284DeviceID: \"MFG:EPSON;CMD:ESCPL2,BDC,D4,D4PX,ESCPR5,ESCPR7,END4,GENEP,URF,PWG;MDL:{short_model} Series;CLS:PRINTER;DES:EPSON {short_model} Series;\""
     ));
@@ -332,11 +340,51 @@ pub fn generate_ppds(ppd_dir: &Path) -> std::io::Result<()> {
         ("SureColor SC-P900", true, "Epson-SC-P900-ESCPR.ppd"),
         ("SureColor SC-P700", false, "Epson-SC-P700-ESCPR.ppd"),
     ] {
+        // Static PPDs (repository, /usr/share/cups/model) contain only the built-in media, so they
+        // never carry a particular user's custom media slots.
         let out = ppd_dir.join(fname);
-        std::fs::write(&out, build_ppd(model_name, is_p900))?;
+        let builtin_only = MediaRegistry::from_json_paths(&[]);
+        std::fs::write(&out, build_ppd_with(&builtin_only, model_name, is_p900))?;
         println!("Generated {}", out.display());
     }
     Ok(())
+}
+
+/// Carries the queue's chosen defaults (`*DefaultX: value`) from `old_ppd` into `new_ppd`, as long
+/// as `value` is still a choice of option `X` in the new PPD.
+pub fn merge_ppd_defaults(new_ppd: &str, old_ppd: &str) -> String {
+    let old_defaults: std::collections::HashMap<&str, &str> = old_ppd
+        .lines()
+        .filter_map(|l| l.strip_prefix("*Default"))
+        .filter_map(|rest| rest.split_once(':'))
+        .map(|(opt, val)| (opt.trim(), val.trim()))
+        .collect();
+    let has_choice = |opt: &str, val: &str| {
+        let prefix = format!("*{opt} {val}");
+        new_ppd.lines().any(|l| {
+            l.strip_prefix(&prefix)
+                .is_some_and(|rest| rest.starts_with('/') || rest.starts_with(':'))
+        })
+    };
+    let mut out: Vec<String> = Vec::new();
+    for line in new_ppd.lines() {
+        let merged = line
+            .strip_prefix("*Default")
+            .and_then(|rest| rest.split_once(':'))
+            .and_then(|(opt, _)| {
+                let opt = opt.trim();
+                old_defaults
+                    .get(opt)
+                    .filter(|val| has_choice(opt, val))
+                    .map(|val| format!("*Default{opt}: {val}"))
+            });
+        out.push(merged.unwrap_or_else(|| line.to_string()));
+    }
+    let mut text = out.join("\n");
+    if new_ppd.ends_with('\n') {
+        text.push('\n');
+    }
+    text
 }
 
 pub fn render_feature_table() -> String {
@@ -348,16 +396,28 @@ pub fn render_feature_table() -> String {
     let tested_slots = ["Rear"];
     let tested_sizes = ["A4"];
     let tested_quality = ["High"];
-    let tested_color = ["EpsonICC", "NoColorAdjustment", "EpsonAdobeRGB", "AdvancedBW"];
+    let tested_color = [
+        "EpsonICC",
+        "NoColorAdjustment",
+        "EpsonAdobeRGB",
+        "AdvancedBW",
+    ];
 
     let mut l: Vec<String> = Vec::with_capacity(160);
-    l.push("<!-- GENERATED by rastertop900escpr --generate-feature-table - do not edit by hand -->".to_string());
+    l.push(
+        "<!-- GENERATED by rastertop900escpr --generate-feature-table - do not edit by hand -->"
+            .to_string(),
+    );
     l.push(String::new());
     l.push("# Supported features".to_string());
     l.push(String::new());
     l.push("> [!WARNING]".to_string());
-    l.push("> This driver is **beta / experimental**. Only entries marked ✅ have been".to_string());
-    l.push("> verified by printing on a real SC-P900. Everything else is implemented from".to_string());
+    l.push(
+        "> This driver is **beta / experimental**. Only entries marked ✅ have been".to_string(),
+    );
+    l.push(
+        "> verified by printing on a real SC-P900. Everything else is implemented from".to_string(),
+    );
     l.push("> Epson's driver data but has not been printed yet. Reports are welcome.".to_string());
     l.push(String::new());
     l.push(format!(
@@ -391,7 +451,10 @@ pub fn render_feature_table() -> String {
     l.push(String::new());
     l.push("Black ink (PK = Photo Black, MK = Matte Black) is chosen by the printer from the media type; the column shows the expected ink, which has only been confirmed where tested.".to_string());
     l.push(String::new());
-    l.push("| Status | CUPS `MediaType` | Name | Media ID | Black | ICC profile | Carbon Black |".to_string());
+    l.push(
+        "| Status | CUPS `MediaType` | Name | Media ID | Black | ICC profile | Carbon Black |"
+            .to_string(),
+    );
     l.push("|---|---|---|---:|:---:|---|:---:|".to_string());
     for m in builtin_media_specs() {
         let st = if tested_media.contains(&m.key.as_str()) {
@@ -400,7 +463,11 @@ pub fn render_feature_table() -> String {
             untested
         };
         let blk = if m.is_matte { "MK" } else { "PK" };
-        let cb = if m.supports_carbon_black { "yes" } else { "–" };
+        let cb = if m.supports_carbon_black {
+            "yes"
+        } else {
+            "–"
+        };
         l.push(format!(
             "| {st} | `{}` | {} | {} | {blk} | `{}` | {cb} |",
             m.key, m.name, m.sn_id, m.icc_profile
@@ -451,8 +518,13 @@ pub fn render_feature_table() -> String {
     l.push(String::new());
     l.push("## Print quality".to_string());
     l.push(String::new());
-    l.push("The firmware only accepts certain quality levels per media type; the driver maps the".to_string());
-    l.push("requested level to the nearest allowed one (table from Epson's driver data).".to_string());
+    l.push(
+        "The firmware only accepts certain quality levels per media type; the driver maps the"
+            .to_string(),
+    );
+    l.push(
+        "requested level to the nearest allowed one (table from Epson's driver data).".to_string(),
+    );
     l.push(String::new());
     l.push("| Status | CUPS `PrintQuality` | Description |".to_string());
     l.push("|---|---|---|".to_string());
@@ -529,4 +601,49 @@ pub fn render_feature_table() -> String {
     l.push(format!("| {missing} | Duplex, CD/DVD layout helpers | |"));
     l.push(String::new());
     l.join("\n")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Write;
+
+    #[test]
+    fn static_ppds_contain_only_builtin_media() {
+        let builtin_only = MediaRegistry::from_json_paths(&[]);
+        let ppd = build_ppd_with(&builtin_only, "SureColor SC-P900", true);
+        assert!(ppd.contains("*MediaType PhotoPaperGlossy/"));
+        assert!(!ppd.contains("Slot0"));
+    }
+
+    #[test]
+    fn custom_media_appear_in_ppd_and_defaults_survive_regeneration() {
+        let mut json = tempfile_json();
+        writeln!(
+            json.1,
+            r#"[{{"slot": 3, "user_media_id": 915907607, "key": "Slot03_Test_Rag", "name": "Test Rag", "base_media": "PremiumLuster"}}]"#
+        )
+        .unwrap();
+        let reg = MediaRegistry::from_json_paths(&[json.0.clone()]);
+        let new_ppd = build_ppd_with(&reg, "SureColor SC-P900", true);
+        assert!(new_ppd.contains("*MediaType Slot03_Test_Rag/"));
+
+        let old_ppd = "*DefaultMediaType: Slot03_Test_Rag\n*DefaultPrintQuality: Max\n*DefaultPageSize: Gone\n";
+        let merged = merge_ppd_defaults(&new_ppd, old_ppd);
+        assert!(merged.contains("*DefaultMediaType: Slot03_Test_Rag"));
+        assert!(merged.contains("*DefaultPrintQuality: Max"));
+        // A default that is no longer a choice keeps the new PPD's default.
+        assert!(merged.contains("*DefaultPageSize: A4"));
+        let _ = std::fs::remove_file(&json.0);
+    }
+
+    fn tempfile_json() -> (std::path::PathBuf, std::fs::File) {
+        let path = std::env::temp_dir().join(format!(
+            "epson-p900-test-{}-{}.json",
+            std::process::id(),
+            line!()
+        ));
+        let file = std::fs::File::create(&path).unwrap();
+        (path, file)
+    }
 }

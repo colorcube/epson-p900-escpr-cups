@@ -160,7 +160,11 @@ pub struct CupsPageStream<'a, R: Read> {
 }
 
 impl<R: Read> CupsPageStream<'_, R> {
-    fn decode_v2_plane(reader: &mut R, target_bytes: usize, unit_size: usize) -> io::Result<Vec<u8>> {
+    fn decode_v2_plane(
+        reader: &mut R,
+        target_bytes: usize,
+        unit_size: usize,
+    ) -> io::Result<Vec<u8>> {
         let mut out = Vec::with_capacity(target_bytes + unit_size);
         let mut unit_buf = vec![0u8; unit_size];
         while out.len() < target_bytes {

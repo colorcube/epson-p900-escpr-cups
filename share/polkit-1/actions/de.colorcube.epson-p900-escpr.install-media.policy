@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<!-- SPDX-License-Identifier: GPL-3.0-or-later -->
+<policyconfig>
+  <vendor>epson-p900-escpr-cups</vendor>
+  <vendor_url>https://github.com/colorcube/epson-p900-escpr-cups</vendor_url>
+  <action id="de.colorcube.epson-p900-escpr.install-media">
+    <description>Install custom printer media for all users</description>
+    <description xml:lang="de">Eigene Druckpapiere für alle Benutzer installieren</description>
+    <message>Authentication is required to install custom printer media system-wide</message>
+    <message xml:lang="de">Zum systemweiten Installieren eigener Druckpapiere ist eine Anmeldung erforderlich</message>
+    <icon_name>printer</icon_name>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install</annotate>
+  </action>
+</policyconfig>

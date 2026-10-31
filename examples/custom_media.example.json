@@ -1,0 +1,14 @@
+[
+  {
+    "slot": 1,
+    "user_media_id": 915000001,
+    "key": "Slot01_Example_Fine_Art_Rag",
+    "name": "Example Fine Art Rag (Slot 1)",
+    "base_media": "VelvetFineArt",
+    "print_duty": 0,
+    "drying_time": 0,
+    "bottom_edge_priority": false,
+    "rubbing_reduction": 0,
+    "icc_profile": "Example_Fine_Art_Rag.icc"
+  }
+]

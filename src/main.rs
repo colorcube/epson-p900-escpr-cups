@@ -17,14 +17,9 @@
 //!
 //! SPDX-License-Identifier: GPL-3.0-or-later
 
-mod cups_raster;
-mod icc;
-mod ppd;
-mod protocol;
-mod rhv2;
-
-use cups_raster::CupsRasterReader;
-use icc::{FirmwareColorSpace, LcmsTransform, find_icc_profile};
+use epson_p900_escpr_cups::cups_raster::CupsRasterReader;
+use epson_p900_escpr_cups::icc::{FirmwareColorSpace, LcmsTransform, find_icc_profile};
+use epson_p900_escpr_cups::{ppd, protocol};
 use image::codecs::jpeg::JpegEncoder;
 use image::imageops::FilterType;
 use image::{DynamicImage, ImageDecoder, ImageReader, Rgb, RgbImage};
@@ -69,8 +64,8 @@ fn parse_bool(val: &str) -> bool {
 
 fn normalize_quality_token(raw: &str) -> Option<&'static str> {
     match raw.trim().to_ascii_lowercase().as_str() {
-        "normal" | "draft" | "360dpi" | "360x360dpi" | "720x360dpi" | "720dpi"
-        | "720x720dpi" | "3" => Some("Normal"),
+        "normal" | "draft" | "360dpi" | "360x360dpi" | "720x360dpi" | "720dpi" | "720x720dpi"
+        | "3" => Some("Normal"),
         "fine" | "superfine" | "720x1440dpi" | "1440x720dpi" | "4" => Some("Fine"),
         "high" | "photo" | "1440dpi" | "1440x1440dpi" | "5" => Some("High"),
         "max" | "superphoto" | "2880x1440dpi" => Some("Max"),
@@ -100,10 +95,19 @@ fn build_config_from_cups_opts(
     job_user: &str,
     job_title: &str,
 ) -> (EscprJobConfig, String) {
+    // `media` usually carries the page size (e.g. "A4" or "iso_a4_210x297mm"); only a part of it
+    // that names a known medium counts as media type.
     let media = opts
         .get("MediaType")
-        .or_else(|| opts.get("media"))
         .cloned()
+        .or_else(|| {
+            opts.get("media").and_then(|m| {
+                m.split(',')
+                    .map(str::trim)
+                    .find(|part| protocol::find_media_spec(part).is_some())
+                    .map(String::from)
+            })
+        })
         .unwrap_or_else(|| "PlainPaper".to_string());
     let input_slot = opts
         .get("InputSlot")
@@ -341,6 +345,10 @@ fn run_cups_filter(args: &[String]) -> i32 {
         let hdr = page.header.clone();
         if !hdr.media_type.is_empty() && cfg.media == "PlainPaper" {
             cfg.media = hdr.media_type.clone();
+        }
+        if let Err(msg) = ensure_media_installed(&cfg.media) {
+            eprintln!("ERROR: {msg}");
+            return 1;
         }
         cfg.custom_w_720 = hdr.width;
         cfg.custom_h_720 = hdr.height;
@@ -880,6 +888,10 @@ fn run_cli(args: &[String]) -> i32 {
         eprintln!("Specify --image <PATH>, --test-strip, --generate-ppd, or run as a CUPS filter.");
         return 2;
     }
+    if let Err(msg) = ensure_media_installed(&cfg.media) {
+        eprintln!("{msg}");
+        return 2;
+    }
 
     if cfg.borderless {
         cfg.margin_720 = 0;
@@ -1096,10 +1108,74 @@ fn run_cli(args: &[String]) -> i32 {
     0
 }
 
+/// Refuses to print on a medium that is neither built in nor in the system database: printing it
+/// with plain-paper settings would waste fine-art paper.
+fn ensure_media_installed(media: &str) -> Result<(), String> {
+    if protocol::find_media_spec(media).is_some() {
+        return Ok(());
+    }
+    Err(format!(
+        "[rastertop900escpr] Papier \"{media}\" ist auf diesem Rechner nicht installiert \
+         (unknown media type). Install it with ep-media-installer → \"Für das System installieren\" \
+         ({}).",
+        protocol::SYSTEM_CUSTOM_MEDIA_JSON
+    ))
+}
+
+/// CUPS driver program interface (`/usr/lib/cups/driver/epson-p900-escpr list|cat NAME`): serves
+/// PPDs generated on the fly, including the custom media of the system database, so queues created
+/// after installing new media offer them right away.
+fn run_cups_driver(args: &[String]) -> i32 {
+    const MODELS: [(&str, &str, bool); 2] = [
+        ("epson-p900-escpr:SC-P900", "SC-P900", true),
+        ("epson-p900-escpr:SC-P700", "SC-P700", false),
+    ];
+    match args.first().map(String::as_str) {
+        Some("list") => {
+            for (name, model, _) in MODELS {
+                println!(
+                    "\"{name}\" en \"EPSON\" \"EPSON {model} Series (SureColor) - Official ICC + ESC/P-R Lv5, custom media\" \"MFG:EPSON;MDL:{model} Series;\""
+                );
+            }
+            0
+        }
+        Some("cat") => {
+            let wanted = args.get(1).map(String::as_str).unwrap_or_default();
+            match MODELS.iter().find(|(name, _, _)| *name == wanted) {
+                Some((_, model, is_p900)) => {
+                    print!(
+                        "{}",
+                        ppd::build_ppd(&format!("SureColor {model}"), *is_p900)
+                    );
+                    0
+                }
+                None => {
+                    eprintln!("ERROR: unknown PPD \"{wanted}\"");
+                    1
+                }
+            }
+        }
+        _ => {
+            eprintln!("Usage: epson-p900-escpr list | cat <ppd-name>");
+            1
+        }
+    }
+}
+
 fn main() {
     let args: Vec<String> = std::env::args().collect();
-    let is_cups_filter =
-        (args.len() == 6 || args.len() == 7) && !args[1].starts_with('-');
+    let invoked_as = args
+        .first()
+        .and_then(|a| Path::new(a).file_name())
+        .and_then(|n| n.to_str())
+        .unwrap_or_default();
+    if invoked_as == "epson-p900-escpr" {
+        std::process::exit(run_cups_driver(args.get(1..).unwrap_or_default()));
+    }
+    if args.get(1).map(String::as_str) == Some("--cups-driver") {
+        std::process::exit(run_cups_driver(args.get(2..).unwrap_or_default()));
+    }
+    let is_cups_filter = (args.len() == 6 || args.len() == 7) && !args[1].starts_with('-');
     let code = if is_cups_filter {
         run_cups_filter(&args)
     } else {
@@ -1141,11 +1217,7 @@ mod tests {
         for (opt_str, expected) in cases {
             let opts = parse_cups_options(opt_str);
             let (cfg, _) = build_config_from_cups_opts(&opts, "user", "job");
-            assert_eq!(
-                cfg.quality, expected,
-                "failed for CUPS options '{opt_str}'"
-            );
+            assert_eq!(cfg.quality, expected, "failed for CUPS options '{opt_str}'");
         }
     }
 }
-

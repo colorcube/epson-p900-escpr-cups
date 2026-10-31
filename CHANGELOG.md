@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+### Added
+- System-wide custom media, mirroring Epson's Windows/macOS design (printer NVRAM holds the mechanics, each computer holds paper list and ICC profiles): privileged helper `epson-p900-media-install` (pkexec, polkit action `de.colorcube.epson-p900-escpr.install-media`) installs the paper list to `/etc/epson-p900-escpr-cups/custom_media.json`, ICC profiles to `/usr/local/share/color/icc/epson-p900-custom/`, and regenerates the PPDs of all queues of this driver with `lpadmin -P` while keeping their defaults.
+- CUPS driver program `/usr/lib/cups/driver/epson-p900-escpr` (`list` / `cat`): PPDs generated on the fly with the installed custom media for new queues.
+
+### Changed
+- `custom_media.json` is only read from `$EPSON_P900_CUSTOM_MEDIA_JSON`, `/etc/epson-p900-escpr-cups/` and `/usr/share/epson-p900-escpr-cups/` (no current directory, binary-relative or home paths; the filter runs as `lp`). `install.sh` moves a list installed by older versions from `/usr/share` to `/etc`.
+- Static PPDs (repository, `/usr/share/cups/model`) contain only the built-in media.
+- The repository no longer ships a personal `custom_media.json`; see `examples/custom_media.example.json`.
+
+### Fixed
+- A job with an unknown `MediaType` (e.g. a custom paper not installed on this computer) is aborted with a clear error instead of being printed silently with plain-paper settings.
+- The CUPS `media` option (usually a page size such as `A4`) is no longer taken as media type.
+
 ## 0.3.0 – 2026-10-31 (beta)
 
 ### Added

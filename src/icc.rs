@@ -109,6 +109,7 @@ pub fn default_icc_search_dirs() -> Vec<PathBuf> {
         dirs.push(h.join(".local/share/color/icc/epson-scp900"));
         dirs.push(h.join(".local/share/color/icc"));
     }
+    dirs.push(PathBuf::from(crate::protocol::SYSTEM_CUSTOM_ICC_DIR));
     dirs.push(PathBuf::from("/usr/share/color/icc/epson-scp900"));
     dirs.push(PathBuf::from("/usr/local/share/color/icc/epson-scp900"));
     dirs.push(PathBuf::from("/usr/share/color/icc"));
@@ -252,14 +253,8 @@ impl LcmsTransform {
             }
 
             let (intent, flags) = resolve_intent_and_flags(rendering_intent);
-            let xform = cmsCreateTransform(
-                src_prof,
-                TYPE_RGB_8,
-                dst_prof,
-                TYPE_RGB_8,
-                intent,
-                flags,
-            );
+            let xform =
+                cmsCreateTransform(src_prof, TYPE_RGB_8, dst_prof, TYPE_RGB_8, intent, flags);
             cmsCloseProfile(src_prof);
             cmsCloseProfile(dst_prof);
 

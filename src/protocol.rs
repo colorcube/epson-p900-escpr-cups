@@ -264,68 +264,63 @@ pub fn builtin_media_specs() -> Vec<MediaSpec> {
     ]
 }
 
-#[derive(Debug, Deserialize)]
-struct CustomMediaJsonEntry {
+/// System-wide custom media database, written by `epson-p900-media-install` (root) and read by the
+/// CUPS filter (user `lp`), the PPD generator, LumaPrint and ep-media-installer.
+pub const SYSTEM_CUSTOM_MEDIA_JSON: &str = "/etc/epson-p900-escpr-cups/custom_media.json";
+/// Packaged (read-only) custom media list, lower priority than [`SYSTEM_CUSTOM_MEDIA_JSON`].
+pub const PACKAGED_CUSTOM_MEDIA_JSON: &str = "/usr/share/epson-p900-escpr-cups/custom_media.json";
+/// ICC profiles of custom media installed by `epson-p900-media-install`.
+pub const SYSTEM_CUSTOM_ICC_DIR: &str = "/usr/local/share/color/icc/epson-p900-custom";
+
+/// One entry of `custom_media.json` (unknown fields written by ep-media-installer are ignored).
+#[derive(Debug, Clone, Deserialize)]
+pub struct CustomMediaJsonEntry {
     #[serde(default)]
-    slot: u8,
+    pub slot: u8,
     #[serde(default)]
-    user_media_id: u32,
+    pub user_media_id: u32,
     #[serde(default)]
-    key: String,
+    pub key: String,
     #[serde(default)]
-    name: String,
+    pub name: String,
     #[serde(default)]
-    base_media: String,
+    pub base_media: String,
     #[serde(default)]
-    base_sn_id: Option<u8>,
+    pub base_sn_id: Option<u8>,
     #[serde(default)]
-    base_ppd_id: Option<u16>,
+    pub base_ppd_id: Option<u16>,
     #[serde(default)]
-    icc_profile: String,
+    pub icc_profile: String,
     #[serde(default)]
-    win_icc: String,
+    pub win_icc: String,
     #[serde(default)]
-    is_matte: Option<bool>,
+    pub is_matte: Option<bool>,
     #[serde(default)]
-    default_overcoat: Option<u8>,
+    pub default_overcoat: Option<u8>,
     #[serde(default)]
-    supports_carbon_black: Option<bool>,
+    pub supports_carbon_black: Option<bool>,
     #[serde(default)]
-    print_duty: i32,
+    pub print_duty: i32,
     #[serde(default)]
-    drying_time: u16,
+    pub drying_time: u16,
     #[serde(default)]
-    bottom_edge_priority: bool,
+    pub bottom_edge_priority: bool,
     #[serde(default)]
-    rubbing_reduction: u16,
+    pub rubbing_reduction: u16,
 }
 
-fn custom_media_json_candidates() -> Vec<PathBuf> {
+/// `custom_media.json` locations in priority order: `$EPSON_P900_CUSTOM_MEDIA_JSON` (development
+/// override), then the system database and the packaged list. User home directories are not
+/// searched: the CUPS filter runs as `lp` and could not read them anyway.
+pub fn custom_media_json_candidates() -> Vec<PathBuf> {
     let mut paths = Vec::new();
     if let Ok(env_p) = std::env::var("EPSON_P900_CUSTOM_MEDIA_JSON")
         && !env_p.trim().is_empty()
     {
         paths.push(PathBuf::from(env_p));
     }
-    paths.push(PathBuf::from("custom_media.json"));
-    if let Ok(exe) = std::env::current_exe()
-        && let Some(parent) = exe.parent()
-    {
-        paths.push(parent.join("custom_media.json"));
-        if let Some(grand) = parent.parent() {
-            paths.push(grand.join("custom_media.json"));
-            if let Some(root) = grand.parent() {
-                paths.push(root.join("custom_media.json"));
-            }
-        }
-    }
-    paths.push(PathBuf::from("/etc/epson-p900-escpr-cups/custom_media.json"));
-    paths.push(PathBuf::from("/usr/share/epson-p900-escpr-cups/custom_media.json"));
-    if let Ok(home) = std::env::var("HOME") {
-        let h = PathBuf::from(home);
-        paths.push(h.join(".config/epson-p900-escpr/custom_media.json"));
-        paths.push(h.join(".config/epson-p900/custom_media.json"));
-    }
+    paths.push(PathBuf::from(SYSTEM_CUSTOM_MEDIA_JSON));
+    paths.push(PathBuf::from(PACKAGED_CUSTOM_MEDIA_JSON));
     paths
 }
 
@@ -336,7 +331,13 @@ pub struct MediaRegistry {
 
 pub fn media_registry() -> &'static MediaRegistry {
     static REGISTRY: OnceLock<MediaRegistry> = OnceLock::new();
-    REGISTRY.get_or_init(|| {
+    REGISTRY.get_or_init(|| MediaRegistry::from_json_paths(&custom_media_json_candidates()))
+}
+
+impl MediaRegistry {
+    /// Built-in media plus the custom media of the given `custom_media.json` files (earlier files
+    /// win on duplicate keys; missing or unparsable files are skipped).
+    pub fn from_json_paths(paths: &[PathBuf]) -> Self {
         let mut specs = builtin_media_specs();
         let mut by_key = HashMap::new();
         for (idx, m) in specs.iter().enumerate() {
@@ -345,8 +346,8 @@ pub fn media_registry() -> &'static MediaRegistry {
             by_key.insert(format!("sn_{}", m.sn_id), idx);
         }
 
-        for path in custom_media_json_candidates() {
-            let Ok(text) = std::fs::read_to_string(&path) else {
+        for path in paths {
+            let Ok(text) = std::fs::read_to_string(path) else {
                 continue;
             };
             let Ok(entries) = serde_json::from_str::<Vec<CustomMediaJsonEntry>>(&text) else {
@@ -430,42 +431,60 @@ pub fn media_registry() -> &'static MediaRegistry {
         }
 
         MediaRegistry { specs, by_key }
+    }
+
+    /// The medium for a CUPS `MediaType` value (key, PPD id, `sn_<id>`, slot alias), or `None`.
+    pub fn find(&self, media_option: &str) -> Option<MediaSpec> {
+        let key = media_option.trim().to_ascii_lowercase();
+        self.by_key.get(&key).map(|&idx| self.specs[idx].clone())
+    }
+}
+
+/// The medium for a CUPS `MediaType` value, or `None` if it is neither built in nor installed.
+pub fn find_media_spec(media_option: &str) -> Option<MediaSpec> {
+    media_registry().find(media_option)
+}
+
+/// Like [`find_media_spec`], falling back to plain paper (for PPD generation and table lookups).
+pub fn get_media_spec(media_option: &str) -> MediaSpec {
+    find_media_spec(media_option).unwrap_or_else(|| {
+        let reg = media_registry();
+        let plain_idx = reg.by_key.get("plainpaper").copied().unwrap_or(0);
+        reg.specs[plain_idx].clone()
     })
 }
 
-pub fn get_media_spec(media_option: &str) -> MediaSpec {
-    let reg = media_registry();
-    let key = media_option.trim().to_ascii_lowercase();
-    if let Some(&idx) = reg.by_key.get(&key) {
-        return reg.specs[idx].clone();
-    }
-    let plain_idx = reg.by_key.get("plainpaper").copied().unwrap_or(0);
-    reg.specs[plain_idx].clone()
+pub fn resolve_user_media_id(raw_id: u32, media: &MediaSpec) -> u32 {
+    media_registry().resolve_user_media_id(raw_id, media)
 }
 
-pub fn resolve_user_media_id(raw_id: u32, media: &MediaSpec) -> u32 {
-    let uid = if raw_id > 0 {
-        raw_id
-    } else {
-        media.user_media_id
-    };
-    let reg = media_registry();
-    if (1..=30).contains(&uid) {
-        if let Some(&idx) = reg.by_key.get(&format!("slot_{uid}")) {
+impl MediaRegistry {
+    /// Resolves slot numbers `1..=30` and UI IDs `1901..=1930` to the slot's 32-bit `MA_ID`;
+    /// other values (already 32-bit IDs) pass through.
+    pub fn resolve_user_media_id(&self, raw_id: u32, media: &MediaSpec) -> u32 {
+        let uid = if raw_id > 0 {
+            raw_id
+        } else {
+            media.user_media_id
+        };
+        let reg = self;
+        if (1..=30).contains(&uid) {
+            if let Some(&idx) = reg.by_key.get(&format!("slot_{uid}")) {
+                let s = &reg.specs[idx];
+                if s.user_media_id > 0 {
+                    return s.user_media_id;
+                }
+            }
+        } else if (1901..=1930).contains(&uid)
+            && let Some(&idx) = reg.by_key.get(&format!("slot_{}", uid - 1900))
+        {
             let s = &reg.specs[idx];
             if s.user_media_id > 0 {
                 return s.user_media_id;
             }
         }
-    } else if (1901..=1930).contains(&uid)
-        && let Some(&idx) = reg.by_key.get(&format!("slot_{}", uid - 1900))
-    {
-        let s = &reg.specs[idx];
-        if s.user_media_id > 0 {
-            return s.user_media_id;
-        }
+        uid
     }
-    uid
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -756,7 +775,11 @@ pub const QUALITY_MODES: [(&str, &str, u8); 5] = [
     ),
 ];
 
-pub fn resolve_firmware_print_quality(media: &MediaSpec, quality_key: &str, overcoat_val: u8) -> u8 {
+pub fn resolve_firmware_print_quality(
+    media: &MediaSpec,
+    quality_key: &str,
+    overcoat_val: u8,
+) -> u8 {
     let q = quality_key.trim().to_ascii_lowercase();
     if media.ppd_id == 0 || media.ppd_id == 2 {
         return if q == "normal" { 0 } else { 1 };
@@ -792,7 +815,11 @@ pub fn resolve_firmware_print_quality(media: &MediaSpec, quality_key: &str, over
     3
 }
 
-pub fn get_slot_margins_720(input_slot: &str, borderless: bool, default_margin_720: i16) -> (i16, i16) {
+pub fn get_slot_margins_720(
+    input_slot: &str,
+    borderless: bool,
+    default_margin_720: i16,
+) -> (i16, i16) {
     if borderless {
         return (0, 0);
     }
@@ -1166,7 +1193,20 @@ fn build_remote1_hd_payload(
 }
 
 pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec<u8> {
-    let media = get_media_spec(&cfg.media);
+    build_job_header_with(media_registry(), cfg, print_w, print_h)
+}
+
+/// [`build_job_header`] with an explicit media registry.
+pub fn build_job_header_with(
+    registry: &MediaRegistry,
+    cfg: &EscprJobConfig,
+    print_w: u32,
+    print_h: u32,
+) -> Vec<u8> {
+    let media = registry.find(&cfg.media).unwrap_or_else(|| {
+        let plain_idx = registry.by_key.get("plainpaper").copied().unwrap_or(0);
+        registry.specs[plain_idx].clone()
+    });
     let paper = get_paper_size(&cfg.page_size, cfg.custom_w_720, cfg.custom_h_720);
     let slot = get_input_slot(&cfg.input_slot);
 
@@ -1178,7 +1218,7 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
         media.default_overcoat
     };
 
-    let eff_user_media_id = resolve_user_media_id(cfg.user_media_id, &media);
+    let eff_user_media_id = registry.resolve_user_media_id(cfg.user_media_id, &media);
     let eff_print_duty = cfg.print_duty.unwrap_or(media.print_duty).clamp(-50, 50);
     let eff_drying = cfg.drying_time.unwrap_or(media.drying_time);
     let eff_bottom_edge = cfg
@@ -1309,7 +1349,8 @@ pub fn build_job_header(cfg: &EscprJobConfig, print_w: u32, print_h: u32) -> Vec
     }
 
     // 7. ESC j setj (22 bytes)
-    let (margin_lr, margin_tb) = get_slot_margins_720(&cfg.input_slot, cfg.borderless, cfg.margin_720);
+    let (margin_lr, margin_tb) =
+        get_slot_margins_720(&cfg.input_slot, cfg.borderless, cfg.margin_720);
     let mut j_setj = [0u8; 22];
     j_setj[0..4].copy_from_slice(&paper.width_720.to_be_bytes());
     j_setj[4..8].copy_from_slice(&paper.height_720.to_be_bytes());
@@ -1457,32 +1498,40 @@ mod tests {
 
     #[test]
     fn test_custom_media_resolution_and_job_header() {
-        let m = get_media_spec("Slot01_Example_Luster_250");
+        let json =
+            std::env::temp_dir().join(format!("epson-p900-header-{}.json", std::process::id()));
+        std::fs::write(
+            &json,
+            r#"[{"slot": 1, "user_media_id": 915907607, "key": "Slot01_Example_Luster",
+                 "name": "Example Luster", "base_media": "PremiumLuster", "base_sn_id": 13}]"#,
+        )
+        .unwrap();
+        let reg = MediaRegistry::from_json_paths(std::slice::from_ref(&json));
+        let _ = std::fs::remove_file(&json);
+        let m = reg.find("Slot01_Example_Luster").unwrap();
         assert_eq!(m.slot, 1);
         assert_eq!(m.sn_id, 13); // PremiumLuster
         assert_eq!(m.user_media_id, 915_907_607);
-        assert_eq!(resolve_user_media_id(1, &m), 915_907_607);
-        assert_eq!(resolve_user_media_id(1901, &m), 915_907_607);
+        assert_eq!(reg.resolve_user_media_id(1, &m), 915_907_607);
+        assert_eq!(reg.resolve_user_media_id(1901, &m), 915_907_607);
 
         let cfg = EscprJobConfig {
-            media: "Slot01_Example_Luster_250".to_string(),
+            media: "Slot01_Example_Luster".to_string(),
             print_duty: Some(-10),
             bottom_edge_priority: Some(true),
             ..Default::default()
         };
-        let hdr = build_job_header(&cfg, 5784, 8250);
+        let hdr = build_job_header_with(&reg, &cfg, 5784, 8250);
         // Verify ESC q setl packet: 1b 'q' 04 00 00 00 "setl" 36 97 a4 17
         let expected_setl = b"\x1bq\x04\x00\x00\x00setl\x36\x97\xa4\x17";
         assert!(
-            hdr.windows(expected_setl.len())
-                .any(|w| w == expected_setl),
+            hdr.windows(expected_setl.len()).any(|w| w == expected_setl),
             "ESC q setl with MA_ID 0x3697a417 not found in job header"
         );
         // Verify ESC m seti packet: 1b 'm' 04 00 00 00 "seti" 00 00 00 01
         let expected_seti = b"\x1bm\x04\x00\x00\x00seti\x00\x00\x00\x01";
         assert!(
-            hdr.windows(expected_seti.len())
-                .any(|w| w == expected_seti),
+            hdr.windows(expected_seti.len()).any(|w| w == expected_seti),
             "ESC m seti not found in job header"
         );
     }
@@ -1542,4 +1591,3 @@ mod tests {
         assert_eq!(get_slot_margins_720("Rear", true, 84), (0, 0));
     }
 }
-

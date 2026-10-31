@@ -13,7 +13,9 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y liblcms2-dev
       - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          components: clippy, rustfmt
+      - name: Format
+        run: cargo fmt --check
       - name: Build
         run: cargo build --locked
       - name: Test
