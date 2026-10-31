@@ -168,6 +168,10 @@ Test reports are the most valuable contribution right now: which paper, source,
 size and quality you printed, and whether it worked. If the printer shows an
 error, attach the job written with `-o job.prn`.
 
+## About the development
+
+LumaPrint was developed with extensive help from AI. The code, the tests and the documentation were written by Google's Gemini and Anthropic's Claude under my direction. Requirements, design decisions, review and all tests with real hardware are my own.
+
 ## Legal
 
 - Code: GNU General Public License v3.0 or later, see [LICENSE](LICENSE).
