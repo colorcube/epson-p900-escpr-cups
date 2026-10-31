@@ -4,6 +4,7 @@ version = "0.3.0"
 edition = "2024"
 rust-version = "1.85"
 license = "GPL-3.0-or-later"
+repository = "https://github.com/colorcube/epson-p900-escpr-cups"
 description = "Linux CUPS driver and ESC/P-R Level 5 + Official ICC streaming filter for Epson SureColor SC-P900 and SC-P700"
 
 [[bin]]

@@ -43,11 +43,11 @@ Gutenprint is explained in [docs/why-not-gutenprint.md](docs/why-not-gutenprint.
 
 ## Companion Projects
 
-- **[`ep-media-installer` (`epmi`)](../ep-media-installer)**: Standalone Rust CLI &
+- **[`ep-media-installer` (`epmi`)](https://github.com/colorcube/ep-media-installer)**: Standalone Rust CLI &
   GUI tool for managing the printer's 30 custom media NVRAM slots (`1..30`) over
   SNMP, importing/downloading `.emx` media packages, and writing
   `custom_media.json` for this CUPS driver.
-- **[`LumaPrint`](../LumaPrint)**: Rust/egui fine-art photo layout and soft-proofing
+- **[`LumaPrint`](https://github.com/colorcube/lumaprint)**: Rust/egui fine-art photo layout and soft-proofing
   application for Linux that works with any CUPS printer and automatically reads
   the paper-to-ICC mappings from this driver's PPD.
 - *(Note: The original Python prototype of the driver and media installer is
