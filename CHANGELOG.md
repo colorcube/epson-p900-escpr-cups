@@ -8,7 +8,7 @@
 
 ### Changed
 - `custom_media.json` is only read from `$EPSON_P900_CUSTOM_MEDIA_JSON`, `/etc/epson-p900-escpr-cups/` and `/usr/share/epson-p900-escpr-cups/` (no current directory, binary-relative or home paths; the filter runs as `lp`). `install.sh` moves a list installed by older versions from `/usr/share` to `/etc`.
-- Static PPDs (repository, `/usr/share/cups/model`) contain only the built-in media.
+- PPDs are no longer installed as static files to `/usr/share/cups/model` (older copies are removed, so setup tools no longer list each model twice); CUPS gets them from the driver program when a queue is created. The repository PPDs (`ppd/`, reference and CI check) contain only the built-in media.
 - The repository no longer ships a personal `custom_media.json`; see `examples/custom_media.example.json`.
 
 ### Fixed

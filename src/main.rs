@@ -1134,7 +1134,7 @@ fn run_cups_driver(args: &[String]) -> i32 {
         Some("list") => {
             for (name, model, _) in MODELS {
                 println!(
-                    "\"{name}\" en \"EPSON\" \"EPSON {model} Series (SureColor) - Official ICC + ESC/P-R Lv5, custom media\" \"MFG:EPSON;MDL:{model} Series;\""
+                    "\"{name}\" en \"EPSON\" \"EPSON {model} Series (SureColor) - Official ICC + ESC/P-R Lv5 (high quality)\" \"MFG:EPSON;MDL:{model} Series;\""
                 );
             }
             0

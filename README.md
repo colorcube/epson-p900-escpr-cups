@@ -77,8 +77,8 @@ sudo ./install.sh 192.0.2.10
 ```
 
 This installs the filter `/usr/lib/cups/filter/rastertop900escpr`, the CUPS PPD
-generator `/usr/lib/cups/driver/epson-p900-escpr`, the static PPDs to
-`/usr/share/cups/model/epson-p900-escpr/`, the ICC profiles to
+generator `/usr/lib/cups/driver/epson-p900-escpr` (CUPS asks it for the PPD when a
+queue is created, so the PPD always contains the installed custom papers), the ICC profiles to
 `/usr/share/color/icc/epson-scp900/`, and the media helper
 `/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install` with its polkit
 policy. Custom papers are installed system-wide with
@@ -92,7 +92,7 @@ If you ran `sudo ./install.sh` without an IP address (or when connecting via USB
    - **Network (Auto-Discovered or Manual):** Select the discovered **EPSON SC-P900 Series** (`dnssd://EPSON%20SC-P900%20Series._ipp._tcp.local/?uuid=...` or `lpd://.../PASSTHRU`), or choose **AppSocket / HP JetDirect** and enter `socket://<PRINTER_IP>:9100` (e.g. `socket://192.0.2.10:9100`).
    - **USB:** Select the USB-connected **EPSON SC-P900 Series** (`usb://EPSON/SC-P900%20Series...`).
 2. **Driver Selection:**
-   - **Recommended Drivers screen (KDE / system-config-printer):** Select the **`PPD-Datei` (`epson-p900-escpr/Epson-SC-P900-ESCPR.ppd`)** entry (as opposed to `Treiberloses Drucken` / `driverless`; note that KDE displays a `?` icon for all `.ppd` drivers on IPP/DNS-SD connections and a `★` icon on USB/LPD connections).
+   - **Recommended Drivers screen (KDE / system-config-printer):** Select the **`epson-p900-escpr:SC-P900`** entry (as opposed to `Treiberloses Drucken` / `driverless`; note that KDE displays a `?` icon for all `.ppd` drivers on IPP/DNS-SD connections and a `★` icon on USB/LPD connections).
    - **Manual Driver Search (`Manuelle Treibersuche…`):** Under Manufacturer **EPSON**, our driver **`EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5 (high quality)`** is automatically pre-selected.
    - *(Note: If KDE System Settings was already open while running `sudo ./install.sh`, close and reopen System Settings so it reloads the CUPS PPD list.)*
 

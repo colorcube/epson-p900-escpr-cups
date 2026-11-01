@@ -2,7 +2,7 @@
 # install.sh - Build and install the epson-p900-escpr-cups Rust driver into CUPS.
 #
 # Usage:
-#   ./install.sh              # Build release binary and generate PPDs
+#   ./install.sh              # Build release binaries
 #   sudo ./install.sh [IP]    # Install into CUPS and optionally register queue
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
@@ -40,13 +40,6 @@ if ! ls "$SCRIPT_DIR/icc/"*.icc >/dev/null 2>&1; then
     fi
 fi
 
-echo "=== 3. Generating CUPS PPD files ==="
-if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then
-    sudo -u "$SUDO_USER" "$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
-else
-    "$BIN_PATH" --generate-ppd --ppd-dir "$SCRIPT_DIR/ppd"
-fi
-
 if [[ $EUID -ne 0 ]]; then
     echo ""
     echo "Build complete."
@@ -55,7 +48,7 @@ if [[ $EUID -ne 0 ]]; then
     exit 0
 fi
 
-echo "=== 4. Installing filter, PPD generator, media helper, PPDs, and ICC profiles ==="
+echo "=== 3. Installing filter, PPD generator, media helper, and ICC profiles ==="
 rm -rf /usr/share/epson-p900-escpr-cups/src
 
 install -d /usr/lib/cups/filter
@@ -82,9 +75,9 @@ fi
 rm -f "$OLD_MEDIA_JSON"
 rmdir /usr/share/epson-p900-escpr-cups 2>/dev/null || true
 
-install -d /usr/share/cups/model/epson-p900-escpr
-install -m 644 "$SCRIPT_DIR/ppd/Epson-SC-P900-ESCPR.ppd" /usr/share/cups/model/epson-p900-escpr/
-install -m 644 "$SCRIPT_DIR/ppd/Epson-SC-P700-ESCPR.ppd" /usr/share/cups/model/epson-p900-escpr/
+# PPDs come from the driver program above (generated when a queue is created). Remove the static
+# PPDs of older versions so printer setup tools do not list every model twice.
+rm -rf /usr/share/cups/model/epson-p900-escpr
 
 install -d /usr/share/color/icc/epson-scp900
 shopt -s nullglob
@@ -97,7 +90,6 @@ if command -v restorecon >/dev/null 2>&1; then
         /usr/lib/cups/driver/epson-p900-escpr \
         "$(dirname "$HELPER_DEST")" \
         /etc/epson-p900-escpr-cups \
-        /usr/share/cups/model/epson-p900-escpr \
         /usr/share/color/icc/epson-scp900 >/dev/null 2>&1 || true
 fi
 
@@ -106,21 +98,17 @@ rm -f /var/cache/cups/ppds.dat 2>/dev/null || true
 pkill -f scp-dbus-service.py 2>/dev/null || true
 
 if [[ -n "$PRINTER_IP" ]]; then
-    echo "=== 5. Registering CUPS queue 'Epson_SC_P900_ESCPR' at socket://${PRINTER_IP}:9100 ==="
+    echo "=== 4. Registering CUPS queue 'Epson_SC_P900_ESCPR' at socket://${PRINTER_IP}:9100 ==="
     lpadmin -p Epson_SC_P900_ESCPR -E \
         -v "socket://${PRINTER_IP}:9100" \
         -m epson-p900-escpr:SC-P900 \
-        -D "Epson SureColor SC-P900 (Official ICC + ESC/P-R Lv5)" \
-    || lpadmin -p Epson_SC_P900_ESCPR -E \
-        -v "socket://${PRINTER_IP}:9100" \
-        -P /usr/share/cups/model/epson-p900-escpr/Epson-SC-P900-ESCPR.ppd \
         -D "Epson SureColor SC-P900 (Official ICC + ESC/P-R Lv5)"
     echo "Registered CUPS printer 'Epson_SC_P900_ESCPR'."
 else
     echo "Driver files installed into CUPS (no printer queue created)."
     echo "Note: Close and reopen KDE System Settings (systemsettings) so its cached PPD list reloads."
     echo "You can now add the printer in KDE System Settings / GNOME / CUPS (http://localhost:631)"
-    echo "and select 'EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5'."
+    echo "and select 'EPSON SC-P900 Series (SureColor) - Official ICC + ESC/P-R Lv5 (high quality)'."
 fi
 
 # Refresh the PPDs of existing queues (new driver version, installed custom media)
