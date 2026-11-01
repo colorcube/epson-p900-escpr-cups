@@ -218,7 +218,7 @@ pub fn install_staged_media(
                 return Err(format!("{}: not an ICC profile", staged.display()));
             }
             write_atomic(&installed, &data)?;
-            report.push(format!("ICC installiert: {}", installed.display()));
+            report.push(format!("ICC profile installed: {}", installed.display()));
             Some(installed)
         } else if installed.is_file() {
             Some(installed)
@@ -242,7 +242,7 @@ pub fn install_staged_media(
     json.push(b'\n');
     write_atomic(&paths.media_json, &json)?;
     report.push(format!(
-        "{} Papier(e) in {} eingetragen",
+        "{} paper(s) written to {}",
         entries.len(),
         paths.media_json.display()
     ));
@@ -252,7 +252,7 @@ pub fn install_staged_media(
             let name = file.file_name().to_string_lossy().into_owned();
             let is_profile = safe_icc_name(&name).is_some();
             if is_profile && !referenced.contains(&name) && fs::remove_file(file.path()).is_ok() {
-                report.push(format!("Nicht mehr benutztes ICC entfernt: {name}"));
+                report.push(format!("Unused ICC profile removed: {name}"));
             }
         }
     }
@@ -289,14 +289,14 @@ pub fn remove_media(key: &str, paths: &SystemPaths) -> Result<Vec<String>, Strin
     let mut json = serde_json::to_vec_pretty(&value).map_err(|e| e.to_string())?;
     json.push(b'\n');
     write_atomic(&paths.media_json, &json)?;
-    let mut report = vec![format!("Papier {key} entfernt")];
+    let mut report = vec![format!("Paper {key} removed")];
     for icc in removed_icc {
         let p = PathBuf::from(&icc);
         if !still_used.contains(&icc)
             && p.starts_with(&paths.icc_dir)
             && fs::remove_file(&p).is_ok()
         {
-            report.push(format!("ICC entfernt: {icc}"));
+            report.push(format!("ICC profile removed: {icc}"));
         }
     }
     Ok(report)
@@ -349,13 +349,13 @@ pub fn refresh_queue_ppds(media_json: &Path) -> Result<Vec<String>, String> {
             .status();
         let _ = fs::remove_file(&tmp);
         match status {
-            Ok(s) if s.success() => report.push(format!("Warteschlange {queue}: PPD aktualisiert")),
+            Ok(s) if s.success() => report.push(format!("Queue {queue}: PPD updated")),
             Ok(s) => failures.push(format!("{queue}: lpadmin exit {s}")),
             Err(e) => failures.push(format!("{queue}: lpadmin: {e}")),
         }
     }
     if report.is_empty() && failures.is_empty() {
-        report.push(String::from("Keine Warteschlange dieses Treibers gefunden"));
+        report.push(String::from("No queue of this driver found"));
     }
     if failures.is_empty() {
         Ok(report)

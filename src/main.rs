@@ -1115,9 +1115,8 @@ fn ensure_media_installed(media: &str) -> Result<(), String> {
         return Ok(());
     }
     Err(format!(
-        "[rastertop900escpr] Papier \"{media}\" ist auf diesem Rechner nicht installiert \
-         (unknown media type). Install it with ep-media-installer → \"Für das System installieren\" \
-         ({}).",
+        "[rastertop900escpr] Media type \"{media}\" is not installed on this computer. \
+         Install it with ep-media-installer → \"Install for this computer\" ({}).",
         protocol::SYSTEM_CUSTOM_MEDIA_JSON
     ))
 }

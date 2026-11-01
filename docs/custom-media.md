@@ -9,7 +9,7 @@ This driver (`rastertop900escpr`) supports custom media in two ways:
 1. **Mode 2 — Hardware NVRAM Slots (`1..30`) & `.emx` Packages via the system media database:**
    **[`ep-media-installer` (`epmi`)](https://github.com/colorcube/ep-media-installer)**
    reads the printer's slots, fetches the matching `.emx` packages (with ICC
-   profiles) and installs them system-wide with **"Für das System installieren"**.
+   profiles) and installs them system-wide with **"Install for this computer"**.
    All registered papers then appear in the CUPS PPD (`*MediaType` +
    `*%cupsICCProfile`), in the CUPS filter and in **LumaPrint**.
 2. **Mode 1 — Dynamic Per-Job Overrides (`lp -o ...` / CLI flags):**
