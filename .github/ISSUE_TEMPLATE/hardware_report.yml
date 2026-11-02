@@ -1,0 +1,42 @@
+name: Hardware Test Report
+description: Report a successful (or failed) print test on a real SC-P900 or SC-P700
+title: "[Hardware Test]: "
+labels: ["hardware-test"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Help us expand [`docs/supported-features.md`](https://github.com/colorcube/epson-p900-escpr-cups/blob/main/docs/supported-features.md) by reporting which media, paper feed, size, and quality you tested on real hardware!
+  - type: dropdown
+    id: printer_model
+    attributes:
+      label: Printer Model
+      options:
+        - Epson SureColor SC-P900
+        - Epson SureColor SC-P700
+    validations:
+      required: true
+  - type: input
+    id: settings
+    attributes:
+      label: Tested Combination (Media, Feed, Page Size, Quality, Color Mode)
+      placeholder: "VelvetFineArt, FrontFineArt, A3+, CarbonBlack, EpsonICC"
+    validations:
+      required: true
+  - type: dropdown
+    id: result
+    attributes:
+      label: Result
+      options:
+        - Worked as expected
+        - Printed with issues (describe below)
+        - Failed / printer showed error (describe below)
+    validations:
+      required: true
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes / Observations
+      description: "Any observations on print quality, margins, drying time, platen gap, or LCD preview."
+    validations:
+      required: false

@@ -5,6 +5,7 @@
 ### Added
 - System-wide custom media, mirroring Epson's Windows/macOS design (printer NVRAM holds the mechanics, each computer holds paper list and ICC profiles): privileged helper `epson-p900-media-install` (pkexec, polkit action `de.colorcube.epson-p900-escpr.install-media`) installs the paper list to `/etc/epson-p900-escpr-cups/custom_media.json`, ICC profiles to `/usr/local/share/color/icc/epson-p900-custom/`, and regenerates the PPDs of all queues of this driver with `lpadmin -P` while keeping their defaults.
 - CUPS driver program `/usr/lib/cups/driver/epson-p900-escpr` (`list` / `cat`): PPDs generated on the fly with the installed custom media for new queues.
+- `sudo ./install.sh --uninstall` (removes filter, PPD generator, helper, polkit policy, and Epson ICC profiles while preserving `/etc/epson-p900-escpr-cups/`, custom ICC profiles, and existing queues) and `sudo ./install.sh --purge`.
 
 ### Changed
 - `custom_media.json` is only read from `$EPSON_P900_CUSTOM_MEDIA_JSON`, `/etc/epson-p900-escpr-cups/` and `/usr/share/epson-p900-escpr-cups/` (no current directory, binary-relative or home paths; the filter runs as `lp`). `install.sh` moves a list installed by older versions from `/usr/share` to `/etc`.

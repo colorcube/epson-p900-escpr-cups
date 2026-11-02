@@ -1,0 +1,59 @@
+name: Bug Report
+description: Report a printing error, filter failure, or color/media issue
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting an issue! Please fill in the details below so we can reproduce and diagnose the problem.
+  - type: dropdown
+    id: printer_model
+    attributes:
+      label: Printer Model
+      options:
+        - Epson SureColor SC-P900
+        - Epson SureColor SC-P700
+        - Other (please specify below)
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Linux Distribution & CUPS Version
+      description: "e.g. Fedora 44 (CUPS 2.4.11), Debian 13, Ubuntu 24.04, Arch Linux"
+      placeholder: "Fedora 44, CUPS 2.4.11"
+    validations:
+      required: true
+  - type: input
+    id: driver_version
+    attributes:
+      label: Driver Version / Git Commit
+      description: "Output of `git rev-parse --short HEAD` or release tag (e.g. `v0.3.0`)"
+      placeholder: "v0.3.0"
+    validations:
+      required: true
+  - type: input
+    id: print_settings
+    attributes:
+      label: Paper, Feed, Size, Quality & Color Mode
+      description: "Which MediaType (or custom slot), InputSlot, PageSize, PrintQuality, and EpsonColorMode were used?"
+      placeholder: "MediaType=PhotoPaperGlossy, InputSlot=Rear, PageSize=A4, PrintQuality=High, EpsonColorMode=EpsonICC"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: "Describe what you expected to happen and what actually happened (e.g. printer LCD message, CUPS job state, visual defect)."
+    validations:
+      required: true
+  - type: textarea
+    id: cups_log
+    attributes:
+      label: CUPS Log Excerpt
+      description: |
+        Run `sudo cupsctl --debug-logging`, reproduce the issue, and paste the relevant lines from `sudo journalctl -u cups -n 100` or `/var/log/cups/error_log`:
+      render: shell
+    validations:
+      required: false
