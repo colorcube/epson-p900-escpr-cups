@@ -1,0 +1,92 @@
+# nfpm configuration for epson-p900-escpr-cups (.deb & .rpm)
+# Build binaries first: cargo build --release --locked
+# Package:              VERSION=0.3.0 nfpm package --packager deb --target dist/
+#                       VERSION=0.3.0 nfpm package --packager rpm --target dist/
+# SPDX-License-Identifier: GPL-3.0-or-later
+
+name: "epson-p900-escpr-cups"
+arch: "amd64"
+platform: "linux"
+version: "${VERSION}"
+section: "text"
+priority: "optional"
+maintainer: "René Fritz <rf@colorcube.de>"
+description: |
+  Native Rust Linux CUPS driver (rastertop900escpr) for the Epson SureColor
+  SC-P900 and SC-P700 using ESC/P-R Level 5 (720x720 dpi 24-bit RGB, RHV2)
+  and official Epson ICC profiles via LittleCMS2.
+vendor: "colorcube"
+homepage: "https://github.com/colorcube/epson-p900-escpr-cups"
+license: "GPL-3.0-or-later"
+
+overrides:
+  deb:
+    depends:
+      - cups
+      - liblcms2-2
+      - pkexec | policykit-1
+    recommends:
+      - curl
+      - p7zip-full | 7zip
+  rpm:
+    depends:
+      - cups
+      - lcms2
+      - polkit
+    recommends:
+      - curl
+      - p7zip
+
+contents:
+  - src: ./target/release/rastertop900escpr
+    dst: /usr/lib/cups/filter/rastertop900escpr
+    file_info:
+      mode: 0755
+
+  - src: /usr/lib/cups/filter/rastertop900escpr
+    dst: /usr/lib/cups/driver/epson-p900-escpr
+    type: symlink
+
+  - src: ./target/release/epson-p900-media-install
+    dst: /usr/libexec/epson-p900-escpr-cups/epson-p900-media-install
+    file_info:
+      mode: 0755
+
+  - src: ./icc/fetch_icc_profiles.sh
+    dst: /usr/bin/epson-p900-fetch-icc-profiles
+    file_info:
+      mode: 0755
+
+  - src: ./share/polkit-1/actions/de.colorcube.epson-p900-escpr.install-media.policy
+    dst: /usr/share/polkit-1/actions/de.colorcube.epson-p900-escpr.install-media.policy
+    file_info:
+      mode: 0644
+
+  - dst: /etc/epson-p900-escpr-cups
+    type: dir
+    file_info:
+      mode: 0755
+
+  - dst: /usr/share/color/icc/epson-scp900
+    type: dir
+    file_info:
+      mode: 0755
+
+  - src: ./README.md
+    dst: /usr/share/doc/epson-p900-escpr-cups/README.md
+    file_info:
+      mode: 0644
+
+  - src: ./CHANGELOG.md
+    dst: /usr/share/doc/epson-p900-escpr-cups/CHANGELOG.md
+    file_info:
+      mode: 0644
+
+  - src: ./LICENSE
+    dst: /usr/share/doc/epson-p900-escpr-cups/LICENSE
+    file_info:
+      mode: 0644
+
+scripts:
+  postinstall: ./packaging/postinstall.sh
+  postremove: ./packaging/postremove.sh

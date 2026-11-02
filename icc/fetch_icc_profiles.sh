@@ -10,7 +10,38 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
-TMP_DIR="$SCRIPT_DIR/_tmp_extract"
+TMP_DIR="$(mktemp -d -t epson-p900-icc.XXXXXX)"
+
+if [[ "$SCRIPT_DIR" == "/usr/bin" || "$SCRIPT_DIR" == "/usr/libexec/epson-p900-escpr-cups" ]]; then
+    DEST_DIR="/usr/share/color/icc/epson-scp900"
+else
+    DEST_DIR="$SCRIPT_DIR"
+fi
+
+ARCHIVE=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --system)
+            DEST_DIR="/usr/share/color/icc/epson-scp900"
+            shift
+            ;;
+        --dest)
+            DEST_DIR="${2:-}"
+            shift 2
+            ;;
+        -h|--help)
+            echo "Usage: $(basename "$0") [--system | --dest <DIR>] [PATH_TO_SCP900_DRIVER.EXE]"
+            echo ""
+            echo "Downloads and extracts the 15 official Epson SC-P900 / SC-P700 ICC profiles"
+            echo "into $DEST_DIR."
+            exit 0
+            ;;
+        *)
+            ARCHIVE="$1"
+            shift
+            ;;
+    esac
+done
 
 # Official Epson Windows x64 driver URL (~41 MB, requires only 7z to extract)
 WIN_DRIVER_URL="https://download.ebz.epson.net/dsc/du/02/DriverDownloadInfo.do?LG2=EN&CN2=US&CTI=4&PRN=SC-P900%20Series&OSC=W64"
@@ -44,8 +75,6 @@ command -v 7z >/dev/null 2>&1 || {
     exit 1
 }
 
-ARCHIVE="${1:-}"
-
 # Auto-detect local driver archive in workspace if not explicitly provided
 if [[ -z "$ARCHIVE" ]]; then
     LOCAL_WIN="$SCRIPT_DIR/../../Epson-SC-P900-Treiber/win_driver/SCP900_STD_WW_612200_W64.exe"
@@ -55,7 +84,7 @@ if [[ -z "$ARCHIVE" ]]; then
     fi
 fi
 
-mkdir -p "$TMP_DIR"
+mkdir -p "$TMP_DIR" "$DEST_DIR"
 
 if [[ -z "$ARCHIVE" ]]; then
     ARCHIVE="$TMP_DIR/SCP900_STD_WW_612200_W64.exe"
@@ -81,12 +110,16 @@ for win_name in "${!ICC_MAP[@]}"; do
     canon_name="${ICC_MAP[$win_name]}"
     src_file="$TMP_DIR/$win_name"
     if [[ -f "$src_file" ]]; then
-        cp -f "$src_file" "$SCRIPT_DIR/$canon_name"
-        ln -sf "$canon_name" "$SCRIPT_DIR/$win_name"
+        install -m 644 "$src_file" "$DEST_DIR/$canon_name"
+        ln -sf "$canon_name" "$DEST_DIR/$win_name"
         count=$((count + 1))
     else
         echo "Warning: $win_name was not found in archive" >&2
     fi
 done
 
-echo "Successfully extracted $count / 15 official Epson ICC profiles into $SCRIPT_DIR"
+if command -v restorecon >/dev/null 2>&1 && [[ "$DEST_DIR" == /usr/* ]]; then
+    restorecon -RF "$DEST_DIR" >/dev/null 2>&1 || true
+fi
+
+echo "Successfully extracted $count / 15 official Epson ICC profiles into $DEST_DIR"

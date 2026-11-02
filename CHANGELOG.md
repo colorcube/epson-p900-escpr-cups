@@ -1,32 +1,25 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 – 2026-11-02 (beta)
 
 ### Added
+- `.deb` and `.rpm` package definitions (`nfpm.yaml`, `packaging/postinstall.sh`, `.github/workflows/release.yml`) and system-wide ICC profile fetcher `/usr/bin/epson-p900-fetch-icc-profiles`.
 - System-wide custom media, mirroring Epson's Windows/macOS design (printer NVRAM holds the mechanics, each computer holds paper list and ICC profiles): privileged helper `epson-p900-media-install` (pkexec, polkit action `de.colorcube.epson-p900-escpr.install-media`) installs the paper list to `/etc/epson-p900-escpr-cups/custom_media.json`, ICC profiles to `/usr/local/share/color/icc/epson-p900-custom/`, and regenerates the PPDs of all queues of this driver with `lpadmin -P` while keeping their defaults.
 - CUPS driver program `/usr/lib/cups/driver/epson-p900-escpr` (`list` / `cat`): PPDs generated on the fly with the installed custom media for new queues.
 - `sudo ./install.sh --uninstall` (removes filter, PPD generator, helper, polkit policy, and Epson ICC profiles while preserving `/etc/epson-p900-escpr-cups/`, custom ICC profiles, and existing queues) and `sudo ./install.sh --purge`.
+- Advanced B&W Photo settings (`ESC q setb`, nine big-endian `i32`: toning wheel H/V, mid-gray tone as gamma × 100, brightness, contrast, shadow/highlight tonality, max optical density, highlight point shift), decoded from Epson Print Layout captures. New CUPS/PPD options `EpsonAbwTone` (Neutral/Cool/Warm), `EpsonAbwMidtone` (Light … Darkest, default Darker as in EPL), `EpsonAbwHighlightShift`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity` (PPD lists steps of 5, any integer in range is accepted) and `EpsonAbwToneH`/`EpsonAbwToneV`; CLI `--abw KEY=VALUE`.
 
 ### Changed
 - `custom_media.json` is only read from `$EPSON_P900_CUSTOM_MEDIA_JSON`, `/etc/epson-p900-escpr-cups/` and `/usr/share/epson-p900-escpr-cups/` (no current directory, binary-relative or home paths; the filter runs as `lp`). `install.sh` moves a list installed by older versions from `/usr/share` to `/etc`.
 - PPDs are no longer installed as static files to `/usr/share/cups/model` (older copies are removed, so setup tools no longer list each model twice); CUPS gets them from the driver program when a queue is created. The repository PPDs (`ppd/`, reference and CI check) contain only the built-in media.
 - The repository no longer ships a personal `custom_media.json`; see `examples/custom_media.example.json`.
-
-### Fixed
-- A job with an unknown `MediaType` (e.g. a custom paper not installed on this computer) is aborted with a clear error instead of being printed silently with plain-paper settings.
-- The CUPS `media` option (usually a page size such as `A4`) is no longer taken as media type.
-
-## 0.3.0 – 2026-10-31 (beta)
-
-### Added
-- Advanced B&W Photo settings (`ESC q setb`, nine big-endian `i32`: toning wheel H/V, mid-gray tone as gamma × 100, brightness, contrast, shadow/highlight tonality, max optical density, highlight point shift), decoded from Epson Print Layout captures. New CUPS/PPD options `EpsonAbwTone` (Neutral/Cool/Warm), `EpsonAbwMidtone` (Light … Darkest, default Darker as in EPL), `EpsonAbwHighlightShift`, `EpsonAbwBrightness`, `EpsonAbwContrast`, `EpsonAbwShadowTone`, `EpsonAbwHighlightTone`, `EpsonAbwMaxDensity` (PPD lists steps of 5, any integer in range is accepted) and `EpsonAbwToneH`/`EpsonAbwToneV`; CLI `--abw KEY=VALUE`.
-
-### Changed
 - CLI (`--image`) in `AdvancedBW` mode converts the image to sRGB from its embedded profile, as EPL does; the firmware then converts to gray and tones. CUPS: send sRGB.
 - Standalone CLI (`--image`): `EpsonAdobeRGB` and `EpsonStandard` now convert the image from its embedded ICC profile (sRGB if none) into the color space the printer LUT expects (Adobe RGB / sRGB), like Epson Print Layout does in "Auto" mode. Identity conversions are skipped so already matching data passes through bit-exact. Verified against the EPL reference captures (sRGB chart in Adobe RGB mode: mean deviation 0.52, Adobe RGB chart: identical).
 - CUPS filter behavior is unchanged: the raster carries no source profile, so `EpsonAdobeRGB` / `EpsonStandard` expect data already in that color space (LumaPrint converts itself). The PPD labels now say so: `Printer Internal Adobe RGB (Input Must Be Adobe RGB)`, `Printer Internal sRGB (Input Must Be sRGB)`.
 
 ### Fixed
+- A job with an unknown `MediaType` (e.g. a custom paper not installed on this computer) is aborted with a clear error instead of being printed silently with plain-paper settings.
+- The CUPS `media` option (usually a page size such as `A4`) is no longer taken as media type.
 - `AdvancedBW`: the LCD preview thumbnail (`ESC t tsnd`) is now neutral gray instead of showing the color data, as in Epson Print Layout (its ABW previews are untoned gray even with Warm toning).
 - `AdvancedBW` header now matches Epson Print Layout byte-for-byte (verified on six ABW captures): color byte 0 in `ESC q setq` / `ESC p setq` (was 3), LUT 7, `ESC q setb` after `ESC q seti` (was missing, so mid-gray tone and toning were never set), REMOTE1 `HD` with the ABW tags `0x12`–`0x1B` instead of the color tags.
 - ICC mode (`EpsonICC`) now uses LittleCMS's default precalculation instead of `cmsFLAGS_HIGHRESPRECALC`, which reproduces Epson Print Layout bit-exactly: Perceptual + BPC and Relative Colorimetric + BPC on Photo Paper Glossy and Velvet Fine Art match the EPL captures on all 256 chart patches (previously up to 2–3 levels off on a few patches). EPL applies BPC to Perceptual as well (Velvet: up to 39 levels difference with/without), so Perceptual keeps BPC.

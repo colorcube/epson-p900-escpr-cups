@@ -36,6 +36,7 @@ if [[ "$ARG1" == "--uninstall" || "$ARG1" == "--purge" ]]; then
     echo "=== Uninstalling epson-p900-escpr-cups driver files ==="
     rm -f /usr/lib/cups/filter/rastertop900escpr
     rm -f /usr/lib/cups/driver/epson-p900-escpr
+    rm -f /usr/bin/epson-p900-fetch-icc-profiles
     rm -f "$HELPER_DEST"
     rmdir "$(dirname "$HELPER_DEST")" 2>/dev/null || true
     rm -f "$POLICY_DEST"
@@ -107,6 +108,8 @@ ln -sf /usr/lib/cups/filter/rastertop900escpr /usr/lib/cups/driver/epson-p900-es
 # Privileged helper for ep-media-installer "Für das System installieren" (pkexec + polkit)
 install -d "$(dirname "$HELPER_DEST")"
 install -m 755 "$HELPER_PATH" "$HELPER_DEST"
+install -d /usr/bin
+install -m 755 "$SCRIPT_DIR/icc/fetch_icc_profiles.sh" /usr/bin/epson-p900-fetch-icc-profiles
 install -d /usr/share/polkit-1/actions
 install -m 644 "$SCRIPT_DIR/share/polkit-1/actions/de.colorcube.epson-p900-escpr.install-media.policy" \
     /usr/share/polkit-1/actions/

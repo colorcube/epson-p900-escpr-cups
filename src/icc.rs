@@ -76,7 +76,7 @@ pub enum FirmwareColorSpace {
 #[derive(Debug, Error)]
 pub enum IccError {
     #[error(
-        "could not find Epson ICC profile for media '{0}' (run './icc/fetch_icc_profiles.sh' first)"
+        "could not find Epson ICC profile for media '{0}' (run 'sudo epson-p900-fetch-icc-profiles' or './icc/fetch_icc_profiles.sh' first)"
     )]
     ProfileNotFound(String),
     #[error("failed to open ICC profile '{0}' via LittleCMS2")]

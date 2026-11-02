@@ -1,4 +1,4 @@
-# epson-p900-escpr-cups
+# Epson SureColor SC-P900 Cups Printer Driver for High Quality Output
 
 A native **Rust** Linux CUPS driver (`rastertop900escpr`) for the **Epson SureColor
 SC-P900** (and, untested, the **SC-P700**) that drives the printer the same way
@@ -70,6 +70,22 @@ The Linux printing workflow for the SureColor SC-P900 / SC-P700 is split into th
 
 ## Installation & Uninstallation
 
+### Option 1: From `.deb` / `.rpm` Release Packages (Recommended)
+
+Download the latest `.deb` (Debian/Ubuntu) or `.rpm` (Fedora/openSUSE) package from [GitHub Releases](https://github.com/colorcube/epson-p900-escpr-cups/releases), install it, and fetch Epson's official ICC profiles (which cannot be redistributed inside the package due to Epson copyright):
+
+```bash
+# Fedora / openSUSE (.rpm):
+sudo dnf install ./epson-p900-escpr-cups-*.x86_64.rpm
+sudo epson-p900-fetch-icc-profiles
+
+# Debian / Ubuntu (.deb):
+sudo apt install ./epson-p900-escpr-cups_*_amd64.deb
+sudo epson-p900-fetch-icc-profiles
+```
+
+### Option 2: Build & Install from Source (`install.sh`)
+
 ```bash
 # 1. Fetch Epson's ICC profiles from the official driver package
 #    (they may not be redistributed, so they are not part of this repository)
@@ -85,14 +101,14 @@ sudo ./install.sh 192.0.2.10
 
 This installs the filter `/usr/lib/cups/filter/rastertop900escpr`, the CUPS PPD
 generator `/usr/lib/cups/driver/epson-p900-escpr` (CUPS asks it for the PPD when a
-queue is created, so the PPD always contains the installed custom papers), the ICC profiles to
+queue is created, so the PPD always contains the installed custom papers), the ICC profile downloader `/usr/bin/epson-p900-fetch-icc-profiles`, the ICC profiles to
 `/usr/share/color/icc/epson-scp900/`, and the media helper
 `/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install` with its polkit
 policy. Custom papers are installed system-wide with
 [`ep-media-installer`](https://github.com/colorcube/ep-media-installer), see
 [docs/custom-media.md](docs/custom-media.md).
 
-To uninstall the driver:
+To uninstall the source installation:
 
 ```bash
 # Remove filter, PPD generator, helper, polkit policy, and Epson ICC profiles
