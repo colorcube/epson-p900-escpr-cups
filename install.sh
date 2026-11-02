@@ -2,23 +2,69 @@
 # install.sh - Build and install the epson-p900-escpr-cups Rust driver into CUPS.
 #
 # Usage:
-#   ./install.sh              # Build release binaries
-#   sudo ./install.sh [IP]    # Install into CUPS and optionally register queue
+#   ./install.sh                  # Build release binaries
+#   sudo ./install.sh [IP]        # Install into CUPS and optionally register queue
+#   sudo ./install.sh --uninstall # Remove driver binaries, PPD generator, polkit policy & Epson ICCs
+#                                 # (keeps /etc/epson-p900-escpr-cups/ and custom ICC profiles)
+#   sudo ./install.sh --purge     # Uninstall and also remove /etc/epson-p900-escpr-cups/, custom ICCs & queue
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PRINTER_IP="${1:-}"
-if [[ "$PRINTER_IP" == "--driver-only" || "$PRINTER_IP" == -* ]]; then
-    PRINTER_IP=""
-fi
+ARG1="${1:-}"
 BIN_PATH="$SCRIPT_DIR/target/release/rastertop900escpr"
 HELPER_PATH="$SCRIPT_DIR/target/release/epson-p900-media-install"
 HELPER_DEST=/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install
+POLICY_DEST=/usr/share/polkit-1/actions/de.colorcube.epson-p900-escpr.install-media.policy
+SYSTEM_MEDIA_DIR=/etc/epson-p900-escpr-cups
 SYSTEM_MEDIA_JSON=/etc/epson-p900-escpr-cups/custom_media.json
 OLD_MEDIA_JSON=/usr/share/epson-p900-escpr-cups/custom_media.json
+CUSTOM_ICC_DIR=/usr/local/share/color/icc/epson-p900-custom
+
+if [[ "$ARG1" == "-h" || "$ARG1" == "--help" ]]; then
+    sed -n '2,9p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+    exit 0
+fi
+
+if [[ "$ARG1" == "--uninstall" || "$ARG1" == "--purge" ]]; then
+    if [[ $EUID -ne 0 ]]; then
+        echo "ERROR: $ARG1 requires root privileges (run: sudo ./install.sh $ARG1)" >&2
+        exit 1
+    fi
+    echo "=== Uninstalling epson-p900-escpr-cups driver files ==="
+    rm -f /usr/lib/cups/filter/rastertop900escpr
+    rm -f /usr/lib/cups/driver/epson-p900-escpr
+    rm -f "$HELPER_DEST"
+    rmdir "$(dirname "$HELPER_DEST")" 2>/dev/null || true
+    rm -f "$POLICY_DEST"
+    rm -rf /usr/share/color/icc/epson-scp900
+    rm -rf /usr/share/cups/model/epson-p900-escpr
+    rm -f /var/cache/cups/ppds.dat 2>/dev/null || true
+    pkill -f scp-dbus-service.py 2>/dev/null || true
+
+    if [[ "$ARG1" == "--purge" ]]; then
+        echo "=== Purging custom media configuration, custom ICC profiles, and default queue ==="
+        rm -rf "$SYSTEM_MEDIA_DIR"
+        rm -rf "$CUSTOM_ICC_DIR"
+        lpadmin -x Epson_SC_P900_ESCPR 2>/dev/null || true
+        echo "Uninstalled driver and purged custom media configuration."
+    else
+        echo "Driver binaries, PPD generator, polkit policy, and Epson ICC profiles removed."
+        echo "Preserved:"
+        echo "  - Custom media configuration: $SYSTEM_MEDIA_DIR/"
+        echo "  - Custom ICC profiles:        $CUSTOM_ICC_DIR/"
+        echo "  - Existing CUPS queues (remove manually with: sudo lpadmin -x Epson_SC_P900_ESCPR)"
+        echo "To remove everything including custom media and profiles, run: sudo ./install.sh --purge"
+    fi
+    exit 0
+fi
+
+PRINTER_IP="$ARG1"
+if [[ "$PRINTER_IP" == "--driver-only" || "$PRINTER_IP" == -* ]]; then
+    PRINTER_IP=""
+fi
 
 echo "=== 1. Building Rust CUPS filter & CLI (rastertop900escpr) ==="
 if [[ $EUID -eq 0 && -n "${SUDO_USER:-}" ]]; then

@@ -41,27 +41,34 @@ although the printer advertises 5760 × 1440 dpi is explained in
 [docs/resolution.md](docs/resolution.md), and why `ESC/P-R` is used instead of
 Gutenprint is explained in [docs/why-not-gutenprint.md](docs/why-not-gutenprint.md).
 
-## Companion Projects
+## Companion Projects & Version Compatibility
 
-- **[`ep-media-installer` (`epmi`)](https://github.com/colorcube/ep-media-installer)**: Standalone Rust CLI &
-  GUI tool for managing the printer's 30 custom media NVRAM slots (`1..30`) over
-  SNMP, importing/downloading `.emx` media packages, and writing
-  `custom_media.json` for this CUPS driver.
-- **[`LumaPrint`](https://github.com/colorcube/lumaprint)**: Rust/egui fine-art photo layout and soft-proofing
-  application for Linux that works with any CUPS printer and automatically reads
-  the paper-to-ICC mappings from this driver's PPD.
-- *(Note: The original Python prototype of the driver and media installer is
-  preserved on the `python-prototype` Git branch.)*
+The Linux printing workflow for the SureColor SC-P900 / SC-P700 is split into three modular Rust projects that can be used individually or together:
 
-## Requirements
+1. **`epson-p900-escpr-cups` (this repository — CUPS Driver):** Translates CUPS raster jobs (from any Linux application) or standalone images into `ESC/P-R Level 5` (`RHV2`) streams, applies Epson or custom ICC profiles via `liblcms2`, dynamically generates PPDs including installed custom papers, and provides the privileged system helper (`epson-p900-media-install`).
+2. **[`ep-media-installer` (`epmi` / `epmi-gui`)](https://github.com/colorcube/ep-media-installer) (Custom Media Manager):** Reads and writes the printer's 30 NVRAM custom media slots (`1..30`) over SNMP, imports local `.emx` files or downloads media from Epson's cloud catalog (27 SureColor series), and installs the paper list (`/etc/epson-p900-escpr-cups/custom_media.json`) and ICC profiles (`/usr/local/share/color/icc/epson-p900-custom/`) system-wide via the driver helper.
+3. **[`LumaPrint`](https://github.com/colorcube/lumaprint) (Fine-Art Print Studio):** Printer-independent 16-bit layout, live softproofing (with paper-white simulation and Wayland wide-gamut support), and Advanced B&W (`ABW`) application. Automatically reads the paper list, custom media parameters, and `*%cupsICCProfile` rules from this driver's PPD and `/etc/epson-p900-escpr-cups/custom_media.json`.
 
-- CUPS (`libcupsfilters` / `cupstestppd`)
-- Rust toolchain (`cargo` / `rustc`)
-- LittleCMS 2 development library (`liblcms2-dev` on Debian/Ubuntu, `lcms2-devel` on Fedora/openSUSE)
-- `7z` (`p7zip`) to extract the Epson ICC profiles from the official driver package
-- The printer reachable over the network (raw port 9100) or USB
+| Project | Version | Compatible With | Shared System Interface |
+| :--- | :--- | :--- | :--- |
+| **`epson-p900-escpr-cups`** | `0.3.x` | `ep-media-installer >= 0.1.0`<br>`LumaPrint >= 0.1.0`<br>Any CUPS client | `/usr/lib/cups/filter/rastertop900escpr`<br>`/usr/lib/cups/driver/epson-p900-escpr`<br>`/usr/libexec/epson-p900-escpr-cups/epson-p900-media-install` |
+| **[`ep-media-installer`](https://github.com/colorcube/ep-media-installer)** | `0.1.x` | `epson-p900-escpr-cups >= 0.3.0`<br>`LumaPrint >= 0.1.0` | `/etc/epson-p900-escpr-cups/custom_media.json`<br>`/usr/local/share/color/icc/epson-p900-custom/` |
+| **[`LumaPrint`](https://github.com/colorcube/lumaprint)** | `0.1.x` | `epson-p900-escpr-cups >= 0.3.0`<br>`ep-media-installer >= 0.1.0`<br>Any CUPS queue | `/etc/cups/ppd/<queue>.ppd`<br>`/etc/epson-p900-escpr-cups/custom_media.json` |
 
-## Installation
+*(Note: The original Python prototype of the driver and media installer is preserved on the `python-prototype` Git branch.)*
+
+## Requirements & Supported Systems
+
+- **Linux distribution:** Any modern Linux distribution (developed and tested on Fedora 43/44; compatible with Debian 13+, Ubuntu 24.04+, Arch Linux, openSUSE Tumbleweed). Runs headless as a CUPS filter and CLI tool (independent of Wayland/X11).
+- **CUPS:** `>= 2.3` (tested with CUPS 2.4; `libcupsfilters` / `cupstestppd`).
+- **Rust toolchain:** `>= 1.85` (`cargo` / `rustc`, Rust 2024 Edition).
+- **System libraries & tools:**
+  - LittleCMS 2 development library (`lcms2-devel` on Fedora/openSUSE, `liblcms2-dev` on Debian/Ubuntu, `lcms2` on Arch)
+  - `7z` (`p7zip` / `7zip`) and `curl` to extract the Epson ICC profiles from the official driver package
+  - `polkit` (`pkexec`) for installing custom media system-wide via [`ep-media-installer`](https://github.com/colorcube/ep-media-installer)
+- **Printer connection:** Network (AppSocket/JetDirect raw port `9100`, IPP/DNS-SD, or LPD) or USB.
+
+## Installation & Uninstallation
 
 ```bash
 # 1. Fetch Epson's ICC profiles from the official driver package
@@ -84,6 +91,17 @@ queue is created, so the PPD always contains the installed custom papers), the I
 policy. Custom papers are installed system-wide with
 [`ep-media-installer`](https://github.com/colorcube/ep-media-installer), see
 [docs/custom-media.md](docs/custom-media.md).
+
+To uninstall the driver:
+
+```bash
+# Remove filter, PPD generator, helper, polkit policy, and Epson ICC profiles
+# (preserves /etc/epson-p900-escpr-cups/, custom ICC profiles, and existing queues):
+sudo ./install.sh --uninstall
+
+# Remove everything including custom media configuration, custom ICC profiles, and the default queue:
+sudo ./install.sh --purge
+```
 
 ### Adding the printer manually in KDE / GNOME / CUPS Web UI (`http://localhost:631`)
 
