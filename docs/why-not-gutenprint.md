@@ -1,108 +1,127 @@
-# Why `ESC/P-R` instead of Gutenprint (`escp2`)?
+# `ESC/P-R` vs. Gutenprint (`escp2`): Trade-offs and Design Rationale
 
-For many years, **[Gutenprint (`libgutenprint`)](https://gimp-print.sourceforge.io/)**
-was the gold standard – and often the *only* way – to drive professional Epson
-photo printers on Linux (such as the Stylus Photo R2880, R3000, SureColor
-SC-P600, and **SC-P800**).
+For earlier Epson photo printers on Linux (such as the Stylus Photo R2880, R3000,
+SureColor SC-P600, and **SC-P800**), **[Gutenprint (`libgutenprint`)](https://gimp-print.sourceforge.io/)**
+has been the standard open-source driver architecture.
 
-With the **SureColor SC-P900** (and SC-P700), Epson fundamentally changed the
-printer's architecture. This page explains why driving the SC-P900 via
-**`ESC/P-R Level 5`** (what this driver does) is the right choice for standard
-photo and fine-art workflows, and what role a low-level Gutenprint (`ESC i`)
-driver would play.
+With the **SureColor SC-P900** (and SC-P700), Epson changed how its official
+Windows and macOS drivers communicate with the printer. Instead of sending
+per-channel nozzle bitmaps from the host, the official drivers send 720 × 720 dpi
+RGB raster bands via **`ESC/P-R Level 5`** and leave the 10-channel ink separation
+to the printer's firmware.
+
+This page explains the architectural difference, the **limitations and drawbacks**
+of the `ESC/P-R` approach, and the pragmatic reasons why `rastertop900escpr` uses
+`ESC/P-R Level 5`.
 
 ---
 
-## 1. The Architectural Shift: SC-P800 vs. SC-P900
+## 1. Two Different Ways to Drive an Epson Photo Printer
 
-### Older Epson Pro printers (up to the SC-P800)
-On earlier models, the printer hardware did not contain an internal RGB-to-ink
-raster image processor (RIP) for high-resolution photo modes:
-- The **Windows/macOS driver on the host PC** had to perform 8- or 9-channel ink
-  separation (`C, LC, VM, VLM, Y, PK/MK, LK, LLK`), variable-sized droplet
-  dithering (1.5 pl / 3 pl / 7 pl), and MicroWeave pass scheduling in software.
-- The host then sent raw 2-bit-per-nozzle droplet bitmaps (`ESC i` raster bands)
-  to the printer.
-- Because Epson never released that proprietary host-side RIP for Linux,
-  **Gutenprint had to re-implement the entire ink separation and halftoning
-  engine on the host**.
+### Direct Per-Channel Control (Gutenprint / Custom RIPs via `ESC/P2` / `ESC i`)
+In a traditional low-level driver or independent RIP:
+- The **host software** performs the complete multi-channel ink separation
+  (`PK, MK, LK, LLK, C, LC, VM, VLM, Y, Violet`), variable droplet dithering
+  (small / medium / large drops), ink-limit enforcement, and pass scheduling.
+- The host sends raw 2-bit-per-nozzle droplet bitmaps (`ESC i` raster bands) to
+  the printhead.
+- **Main benefit:** Complete freedom over every individual ink channel, droplet
+  size, and total ink limit.
 
-### The SC-P900 / SC-P700 (`ESC/P-R Level 5`)
-On the SC-P900 and SC-P700, Epson moved the entire 10-channel ink separation,
-factory-calibrated look-up tables (LUTs), variable droplet dithering, and
-MicroWeave pass scheduling **into the printer's own firmware/ASIC**:
+### Firmware-Managed Separation (`ESC/P-R Level 5`, used by this driver)
+On the SC-P900 and SC-P700, Epson moved the 10-channel ink separation,
+look-up tables (LUTs), variable droplet dithering, and MicroWeave pass scheduling
+into the printer's firmware/ASIC:
 - Even **Epson's official Windows and macOS drivers** no longer send raw nozzle
-  droplet bitmaps (`ESC i`) during normal printing.
-- Instead, the official driver transforms the image into the paper's ICC profile
-  on the computer and sends **720 × 720 dpi 24-bit RGB bands** (`ESC d bsn2`
-  compressed with `RHV2`, with `LUT = 4` / *No Color Adjustment*) to the
-  printer, even when **"Max Quality (5760 × 1440 dpi)"** or **"Carbon Black"**
-  is selected.
+  droplet bitmaps during normal printing.
+- Instead, the host transforms the image into the target paper's ICC profile and
+  sends **720 × 720 dpi 24-bit RGB bands** (`ESC d bsn2` compressed with `RHV2`,
+  with `LUT = 4` / *No Color Adjustment*) to the printer — even when **"Max
+  Quality (5760 × 1440 dpi)"** or **"Carbon Black"** is selected.
 - The printer firmware then expands those 720 dpi RGB pixels into 10-channel
-  (`PK, MK, LK, LLK, C, LC, VM, VLM, Y, Violet`) droplet patterns at up to
-  5760 × 1440 dpi using Epson's factory-calibrated tables.
+  droplet patterns using Epson's internal tables.
 
 ```mermaid
 flowchart TD
     subgraph Official["Official Windows/macOS Driver & This Driver (ESC/P-R Level 5)"]
         A1["Source Image (Adobe RGB / ProPhoto RGB / sRGB)"] --> A2["Host: ICC Profile Conversion (LittleCMS2)"]
         A2 --> A3["720×720 dpi Device RGB (RHV2 bsn2 bands)"]
-        A3 --> A4["SC-P900 Firmware: Factory 10-Ink Separation, Violet & Carbon Black LUTs, 5760×1440 dpi Halftoning"]
+        A3 --> A4["SC-P900 Firmware: Internal 10-Ink Separation, Violet & Carbon Black LUTs, 5760×1440 dpi Halftoning"]
     end
 
-    subgraph GP["Gutenprint Approach (ESC/P3 Low-Level ESC i)"]
-        B1["Source Image"] --> B2["Host: Custom Gutenprint Ink Curves, Subchannel Splitting & Dithering"]
+    subgraph GP["Direct Per-Channel Approach (Gutenprint / Independent RIP)"]
+        B1["Source Image"] --> B2["Host: Custom Ink Curves, Subchannel Splitting & Dithering"]
         B2 --> B3["10× 2-bit Raw Nozzle Bitmaps (ESC i)"]
-        B3 --> B4["SC-P900 Firmware: Fires Nozzles Directly (Bypasses Factory LUTs)"]
+        B3 --> B4["SC-P900 Printhead: Fires Nozzles Directly (Bypasses Firmware LUTs)"]
     end
 ```
 
 ---
 
-## 2. Why `ESC/P-R` is better for Photo & Fine-Art Printing
+## 2. Limitations and Drawbacks of `ESC/P-R`
 
-Because `rastertop900escpr` feeds the exact same `ESC/P-R Level 5` pipeline as
-Epson's Windows and macOS drivers, you get two decisive advantages that a
-Gutenprint `ESC i` driver cannot provide out of the box:
+From the perspective of driver independence, custom RIP development, and maximum
+hardware control, Epson's shift to `ESC/P-R` has significant downsides:
 
-### 1. 100% Compatibility with Official Epson & Paper-Maker ICC Profiles (`.emx`)
-Every ICC profile published for the SC-P900 — both **Epson's 16 official media
-profiles** and third-party profiles from **Hahnemühle, Canson, Photolux,
-Ilford, Moab, and Felix Schoeller** — was measured and profiled on top of
-**Epson's firmware `ESC/P-R` ink separation (`LUT = 4`)**.
-- With **this driver**, all official Epson and third-party `.icc` / `.emx`
-  profiles work **1:1 as intended**, producing prints that are visually
-  indistinguishable from Windows/macOS (verified in daylight side-by-side tests).
-- With **Gutenprint (`ESC i`)**, Epson's firmware LUTs are bypassed and replaced
-  by Gutenprint's own ink splitting and halftoning curves. Consequently,
-  **standard Epson and paper-manufacturer ICC profiles do not match a Gutenprint
-  driver**; every paper would have to be re-linearized and re-profiled from
-  scratch using a spectrophotometer.
-
-### 2. Native Support for Carbon Black, Black Enhance Overcoat & NVRAM Slots
-- **Carbon Black (`5760 × 1440 dpi`)** and **Black Enhance Overcoat** are complex
-  multi-pass firmware modes on the SC-P900 that boost $D_{\max}$ and gloss
-  uniformity on photo and baryta papers. In `ESC/P-R` mode, the firmware executes
-  these modes natively when requested via `ESC q setq` / `ESC q seti`.
-- Likewise, the printer's **30 custom media NVRAM slots (`ESC q setl`)** store
-  mechanical and feed parameters managed via `.emx` files (`ep-media-installer`).
+1. **No Direct Control Over Individual Ink Channels:**
+   Because the printer only accepts 3-channel RGB data in `ESC/P-R` mode, the
+   host cannot address the 10 ink channels (`PK, MK, LK, LLK, C, LC, VM, VLM, Y, V`)
+   individually. You cannot manually adjust light-to-dark transition curves
+   (e.g., `LLK → LK → PK` or `LC → C`), change individual channel ink limits, or
+   control exactly when the Violet channel is used.
+2. **Dependency on Epson's Firmware LUTs ("Black Box"):**
+   Print quality and gamut utilization depend on how Epson engineered the internal
+   RGB-to-10-ink lookup tables in firmware. A dedicated per-channel RIP with
+   custom linearization and profiling can potentially extract a wider gamut,
+   higher $D_{\max}$, or smoother tonal transitions from the physical hardware
+   than Epson's conservative factory tables allow.
+3. **Unsuitable for Custom Inksets and Alternative Processes:**
+   Workflows that rely on direct channel control — such as **Piezography**,
+   third-party monochromatic or expanded-gamut inksets, or **UV contact negatives**
+   (Platinum/Palladium, Cyanotype, screen-printing film positives where specific
+   UV-blocking channels must be fired together) — cannot be implemented properly
+   on top of an RGB-only `ESC/P-R` pipeline.
 
 ---
 
-## 3. When would a Gutenprint (`ESC i`) driver still be useful?
+## 3. Why This Project Still Chose `ESC/P-R Level 5`
 
-Bypassing the printer's internal RIP via `ESC i` (the Gutenprint approach) is
-only advantageous in specialized scenarios where you **explicitly want to
-override Epson's firmware ink rules**:
+The goal of `rastertop900escpr` was pragmatic: **achieve the exact same print
+output on Linux that the SC-P900 produces under Windows and macOS, with reasonable
+development and calibration effort.**
 
-| Use case | Best choice | Why |
+1. **Development Effort and Calibration Reality:**
+   Implementing a 10-channel Gutenprint (`escp2`) driver from scratch requires
+   determining drop-size ratios, subchannel transition curves, base densities,
+   and total ink limits for 10 inks across dozens of paper types — a process that
+   takes hundreds of test prints and extensive spectrophotometer measurements.
+   By targeting the `ESC/P-R Level 5` protocol that Epson's own Windows/macOS
+   drivers use, 1:1 bit-level parity with the official driver was achieved with
+   roughly 20 hardware test prints.
+2. **Direct Compatibility with Existing Paper ICC Profiles (`.icc` / `.emx`):**
+   All ICC profiles published for the SC-P900 — both **Epson's 16 official media
+   profiles** and third-party profiles from **Hahnemühle, Canson, Photolux,
+   Ilford, Moab, and Felix Schoeller** — were measured on top of Epson's
+   `ESC/P-R` firmware separation (`LUT = 4`).
+   - With `rastertop900escpr`, these vendor `.icc` and `.emx` profiles can be used
+     directly without owning a spectrophotometer.
+   - With a per-channel Gutenprint driver, vendor ICC profiles made for the
+     Windows/macOS driver do not match the driver's custom ink splitting, so each
+     paper has to be profiled specifically for Gutenprint.
+3. **Access to Firmware Modes (Carbon Black, Overcoat, Custom Media Slots):**
+   Features like **Carbon Black (`5760 × 1440 dpi`)**, **Black Enhance Overcoat**,
+   and the printer's **30 custom media NVRAM slots (`ESC q setl`)** are executed
+   by the printer firmware when triggered via `ESC/P-R` job headers.
+
+---
+
+## 4. Summary: Which Approach Fits Which Use Case?
+
+| Use case | Suitable approach | Reason |
 |---|---|---|
-| **Color & B&W Fine-Art photography** with Epson, Hahnemühle, Canson, Photolux papers | **This driver (`ESC/P-R`)** | Uses Epson's factory 10-channel linearization and works with all official & vendor `.icc`/`.emx` profiles |
-| **Soft-proofing workflows** (`LumaPrint`, darktable, GIMP) | **This driver (`ESC/P-R`)** | Soft-proof on screen matches the print without custom spectrophotometer profiling |
-| **Screen-printing film positives / UV contact negatives** (Platinum/Palladium, Cyanotype) | **Gutenprint (`ESC i`)** | Requires firing specific UV-blocking channels (`PK + MK + Y + V`) simultaneously or exceeding normal ink limits |
-| **Custom third-party inksets / Piezography** | **Gutenprint (`ESC i`)** | Requires direct per-nozzle channel control when non-Epson inks are loaded into the cartridges |
-| **Pure-carbon B&W research** (forcing 0.0% color ink with custom `LLK/LK/MK` crossover curves) | **Gutenprint (`ESC i`)** | Allows manual control over subchannel transitions if Epson's `AdvancedBW` mode is not desired |
+| **Direct per-channel control & maximum hardware freedom** | **Per-channel driver / RIP (`ESC i`)** | Full control over all 10 ink channels, droplet sizes, transitions, and ink limits |
+| **Custom third-party inksets / Piezography** | **Per-channel driver / RIP (`ESC i`)** | Requires addressing individual nozzle rows when non-Epson inks are loaded |
+| **Screen-printing film positives / UV contact negatives** | **Per-channel driver / RIP (`ESC i`)** | Requires firing specific UV-blocking channels simultaneously beyond standard RGB rules |
+| **Standard Color & B&W Fine-Art printing on Linux matching Windows/macOS** | **This driver (`ESC/P-R`)** | Feeds the same pipeline as Epson's official driver and works out of the box with official & paper-vendor `.icc`/`.emx` profiles |
+| **Soft-proofing with paper-manufacturer ICC profiles** (`LumaPrint`, darktable, GIMP) | **This driver (`ESC/P-R`)** | Matches vendor ICC profiles without requiring custom spectrophotometer profiling |
 
-In short: for **photographic and fine-art printing with original UltraChrome
-PRO10 inks**, the SC-P900's built-in RIP driven via `ESC/P-R Level 5` already
-delivers the exact reference quality of the official Windows/macOS driver.
