@@ -197,7 +197,7 @@ fn build_config_from_cups_opts(
     let ignore_panel_mismatch = opts
         .get("EpsonIgnorePanelMismatch")
         .or_else(|| opts.get("IgnorePanelMismatch"))
-        .map_or(true, |v| parse_bool(v));
+        .is_none_or(|v| parse_bool(v));
 
     let mut abw = AbwSettings::default();
     let mut abw_keys: Vec<_> = opts
@@ -330,16 +330,13 @@ fn run_cups_filter(args: &[String]) -> i32 {
     let mut out = BufWriter::with_capacity(256 * 1024, stdout.lock());
 
     let mut page_idx = 0usize;
-    loop {
-        let Some(mut page) = (match cups_reader.next_page() {
-            Ok(p) => p,
-            Err(e) => {
-                eprintln!("ERROR: [rastertop900escpr] Error reading page header: {e}");
-                return 1;
-            }
-        }) else {
-            break;
-        };
+    while let Some(mut page) = match cups_reader.next_page() {
+        Ok(p) => p,
+        Err(e) => {
+            eprintln!("ERROR: [rastertop900escpr] Error reading page header: {e}");
+            return 1;
+        }
+    } {
         page_idx += 1;
 
         let hdr = page.header.clone();
